@@ -35,7 +35,7 @@ def detectBalls(frame,hsv,color,numBalls):
 
     for i in range(1, numBalls):
         # Only proceed if at least one contour was found
-        if len(cnts)>0
+        if len(cnts) > 0:
             cMax = max(cnts, key=cv2.contourArea)
             ((x,y), rad) = cv2.minEnclosingCircle(cMax)
 
@@ -47,7 +47,7 @@ def detectBalls(frame,hsv,color,numBalls):
                 ballPosition = [x,y,rad]
                 ballFound.append(ballPosition)
 
-           else
+            else
                 print('All balls detected')
                 break
 

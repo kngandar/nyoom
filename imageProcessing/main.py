@@ -5,54 +5,24 @@ import argparse
 import imutils
 import cv2
 
-# Construct the argument parse and parse the arguments
-ap = argparse.ArgumentParser()
-ap.add_argument("-v", "--video",
-                help="path to the (optional) video file")
-ap.add_argument("-b", "--buffer", type=int, default=64,
-                help="max buffer size")
-args = vars(ap.parse_args())
+### CONSTANTS ###
+# Define HSV range of colors (lower, upper)
+green = [(29, 86, 6), (64, 255, 255)]
+yellow = [(10, 120, 120), (50, 255, 255)]
+red = [(145, 110, 120), (195, 255, 255)]
 
-# Define HSV range of colors
-#greenLower = (10, 120, 120)
-#greenUpper = (50, 255, 255)
-#greenLower = (145, 110, 120)
-#greenUpper = (195, 255, 255)
-lower = (29, 86, 6)
-upper = (64, 255, 255)
-lower = (145, 110, 120)
-upper = (195, 255, 255)
-#redLower =
-#redUpper =
-#yellowLower =
-#yellowUpper = 
-#pts = deque(maxlen=args["buffer"])
+fontColor = (255, 165, 0)        # orange
+outlineColor = (0, 255, 255)     # yellow
 
-# If a video path was not supplied, grab the reference to the webcam
-if not args.get("video", False):
-    camera = cv2.VideoCapture(0)
+### DATA TRACKING ###
+# Maybe (??)
 
-# Otherwise, grab a reference to the video file
-else:
-    camera = cv2.VideoCapture(args["video"])            
-
-# Keep looping
-while True:
-    # Grab the current frame
-    (grabbed, frame) = camera.read()
-
-    # If we are viewing a video and we did not grab a frame,
-    # then we hae reached the end of the video
-    if args.get("video" ) and not grabbed:
-        break
-
-    # Resize the frame, blur it, and convert it to the HSV color space
-    frame = imutils.resize(frame, width=600)
-    blurred = cv2.GaussianBlur(frame, (11, 11), 0)
-    hsv = cv2.cvtColor(blurred, cv2.COLOR_BGR2HSV)
-
+### FUNCTIONS ###
+def detectBalls(frame,hsv,color,numBalls):
     # Construct a mask for the color "green", then perform a series of
     # dilations and erosions to remove any small blobs left in the mask
+    lower = color[0]
+    upper = color[1]
     mask = cv2.inRange(hsv, lower, upper)
     mask = cv2.erode(mask, None, iterations=2)
     mask = cv2.dilate(mask, None, iterations=2)
@@ -60,68 +30,79 @@ while True:
     # Find contours in the mask and initialize the current (x,y) center
     # of the ball
     cnts = cv2.findContours(mask.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)[-2]
-    center = None
 
-    # Only proceed if at least one contour was found
-    if len(cnts) > 0:
-        # Find the largest contour in the mask, then use
-        # it to compute the minimum enclosing circle and centroid
-        
-        c = max(cnts, key=cv2.contourArea)
-        center2 = None
-        cnts2 = [e for e in cnts if e not in (c)]
+    ballFound = []
 
-        # Ball 2 if found
-        if len(cnts2) > 0:
-            c2 = max(cnts2, key=cv2.contourArea)
-            ((a,b), rad2) = cv2.minEnclosingCircle(c2)
-            M = cv2.moments(c2)
-            center2 = (int(M["m10"] / M["m00"]), int(M["m01"] / M["m00"]))
+    for i in range(1, numBalls):
+        # Only proceed if at least one contour was found
+        if len(cnts)>0
+            cMax = max(cnts, key=cv2.contourArea)
+            ((x,y), rad) = cv2.minEnclosingCircle(cMax)
 
-            if rad2 > 10:
-                #print("Ball 2")
-                cv2.circle(frame, (int(a), int(b)), int(rad2), (0, 255, 255), 2)
-                cv2.putText(frame, "r: " + str(int(rad2)), (int(a-rad2),int(b-rad2)),cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 255), 2)
-                cv2.putText(frame, "x,y: " + str(int(a)) + ", " +  str(int(b)) , (int(a-rad2),int(b-rad2-rad2)),cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 255), 2)
-        
-        ((x,y), radius) = cv2.minEnclosingCircle(c)
-        M = cv2.moments(c)
-        center = (int(M["m10"] / M["m00"]), int(M["m01"] / M["m00"]))
+            # If radius is greater than 10px, consider as ball
+            if rad > 10:
+                cv2.circle(frame, (int(x), int(y)), int(rad), outlineColor, 2)
+                cv2.putText(frame, "r: " + str(int(rad), (int(x-rad),int(y-rad)),cv2.FONT_HERSHEY_SIMPLEX, 0.6, fontColor, 2)
+                cv2.putText(frame, "x,y: " + str(int(x)) + ", " +  str(int(y)) , (int(x-rad),int(y-rad-rad)),cv2.FONT_HERSHEY_SIMPLEX, 0.6, fontColor, 2)
+                ballPosition = [x,y,rad]
+                ballFound.append(ballPosition)
 
-        # Only proceed if the radius meets a minimum size
-        if radius > 10:
-            #print("Ball 1")
-            # Draw the circle and centroid on the frame
-            # then update the list of tracked points
-            cv2.circle(frame, (int(x), int(y)), int(radius), (0, 255, 0), 2)
-            cv2.putText(frame, "r: " + str(int(radius)), (int(x-radius),int(y-radius)),cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 255), 2)
-            cv2.putText(frame, "x,y: " + str(int(x)) + ", " +  str(int(y)) , (int(x-radius),int(y-radius-radius)),cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 255), 2)
-           
- 
+           else
+                print('All balls detected')
+                break
 
-    # Show the frame to our screen
-    cv2.imshow("Frame", frame)
-    key = cv2.waitKey(1) & 0xFF
+            # Remove max contour from list
+            cnts = [e for e in cnts if e not in (c)]
 
-    # If the 'q' key is pressed, stop the loop
-    if key == ord("q"):
-        break
-    elif key == ord("g"):
-        print 'Set green thresh'
-        lower = (29, 86, 6)
-        upper = (64, 255, 255)
-    elif key == ord("r"):
-        print 'Set red thresh'
-        lower = (145, 110, 120)
-        upper = (195, 255, 255)
-    elif key == ord("y"):
-        print 'Set yellow thresh'
-        lower = (10, 120, 120)
-        upper = (50, 255, 255)
-        
-    
+        # Returns positions of ball detected in current frame
+        return ballFound
 
-# Cleanup the camera and close any open windows
-camera.release()
-cv2.destroyAllWindows()
+def main():
+    # Open webcam object
+    camera = cv2.VideoCapture(0)
 
+    # Keep looping
+    while True:
+        # Grab the current frame
+        (grabbed, frame) = camera.read()
+
+        # If can't receive frame quit
+        if not grabbed:
+            break
+
+        # Resize the frame, blur it, and convert it to the HSV color space
+        frame = imutils.resize(frame, width=600)
+        blurred = cv2.GaussianBlur(frame, (11, 11), 0)
+        hsv = cv2.cvtColor(blurred, cv2.COLOR_BGR2HSV)
+
+        numBalls = 3
+
+        ballFound = detectBall(frame,hsv,green,numBalls)
+        if len(ballFound) > 0
+            print('Number of balls detected: ' + str(len(ballFound)) )
+
+        # Show the frame to our screen
+        cv2.imshow("Frame", frame)
+        key = cv2.waitKey(1) & 0xFF
+
+        # If the 'q' key is pressed, stop the loop
+        if key == ord("q"):
+            break
+        elif key == ord("g"):
+            print 'Set green thresh'
+            color = green
+        elif key == ord("y"):
+            print 'Set yellow thresh'
+            color = yellow
+        elif key == ord("r"):
+            print 'Set red thresh'
+            color = red
+
+    # Cleanup the camera and close any open windows
+    camera.release()
+    cv2.destroyAllWindows()
+
+
+
+if __name__ == "__main__":
+    main()

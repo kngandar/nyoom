@@ -12,8 +12,14 @@ int servoR_pin = 5;
 
 // constants
 const int pulseUp = 675;
+const int pulseUpMid = 1114;
 const int pulseCenter = 1553;
+const int pulseDownMid = 2036;
 const int pulseDown = 2520;
+
+// global variable for servo position T_T
+// 1: up, 2: up-mid, 3: mid, 4: down-mid, 5: down
+int servoPos = 3;
 
 // init servos
 Servo servoL, servoR, brushL, brushR;
@@ -63,7 +69,7 @@ void setup() {
 
 
 void loop() {
-  if(Serial.available() > 0) {
+  if (Serial.available() > 0) {
     String input = Serial.readString();
     
     if (input == "runMotors") {
@@ -81,12 +87,33 @@ void loop() {
       foundYellow();
     } else if (input == "goForth") {
       stayOnCourse();
-    } else if (input == "attemptCourse") {
-      attemptCourse();
     } else if (input == "turnCW") {
       turn90CW();
     } else if (input == "turnCCW") {
       turn90CCW();
+    /** XBOX control commands */
+    } else if (input == "left") {
+      setMotors(-70, -70);
+    } else if (input == "right") {
+      setMotors(80,80);
+    } else if (input == "fwd") {
+      setMotors(80, -80);
+    } else if (input == "bwd") {
+      setMotors(-80, 80);
+    } else if (input == "stop") {
+      stopMotors();
+    } else if (input == "servoUp") {
+      xboxServos("up");
+    } else if (input == "servoDown") {
+      xboxServos("down");
+    } else if (input == "faceFront") {
+      // figure out when we can get the "front" measurement
+    } else if (input == "panic") {
+      stopMotors();
+      servoL.writeMicroseconds(pulseCenter);
+      servoR.writeMicroseconds(pulseCenter);
+      delay(500); // dont run motors until servos are mid
+      runStopMotors(-80, 80, 1000);
     } else {
       Serial.println("Error: invalid input");
     }
@@ -101,7 +128,7 @@ void foundGreen() {
   // Set servos to middle position
   servoL.writeMicroseconds(pulseCenter);
   servoR.writeMicroseconds(pulseCenter);
-  setMotors(80, 80, 2000);
+  runStopMotors(80, 80, 2000);
   Serial.println("Rotated CW");
 }
 
@@ -109,7 +136,7 @@ void foundRed() {
   // Set servos to middle position
   servoL.writeMicroseconds(pulseCenter);
   servoR.writeMicroseconds(pulseCenter);
-  setMotors(-70, -70, 2000);
+  runStopMotors(-70, -70, 2000);
   Serial.println("Rotated CCW");
 }
 
@@ -117,7 +144,7 @@ void foundYellow() {
   // Set servos to down position
   servoL.writeMicroseconds(pulseDown);
   servoR.writeMicroseconds(pulseUp);
-  setMotors(-100, 100, 3000);
+  runStopMotors(-100, 100, 3000);
   Serial.println("Went up for 3 seconds");
 }
 
@@ -148,14 +175,14 @@ void stayOnCourse() {
       Serial.println("going CW");
       servoL.writeMicroseconds(pulseCenter);
       servoR.writeMicroseconds(pulseCenter);
-      setMotors(-70, -70, 1000);
+      runStopMotors(-70, -70, 1000);
       delay(400);
     } else if (delta > tol && delta < 180) {
       // RH-x: go CCW
       Serial.println("going CCW");
       servoL.writeMicroseconds(pulseCenter);
       servoR.writeMicroseconds(pulseCenter);
-      setMotors(80, 80, 1000);
+      runStopMotors(80, 80, 1000);
       delay(400);
     } else {
       Serial.println("staying still");
@@ -262,16 +289,23 @@ void runMotors() {
   int runTime = Serial.parseInt();
   Serial.println(runTime, DEC);
   
-  setMotors(speedL, speedR, runTime);
+  runStopMotors(speedL, speedR, runTime);
 }
 
 /** sets and stops the motors */
-void setMotors(int left, int right, int runTime) {
+void runStopMotors(int left, int right, int runTime) {
   brushL.writeMicroseconds(motorValue(left));
   brushR.writeMicroseconds(motorValue(right));
   Serial.println("Status: running motors");
   delay(runTime);
   stopMotors();
+}
+
+void setMotors(int left, int right) {
+  brushL.writeMicroseconds(motorValue(left));
+  brushR.writeMicroseconds(motorValue(right));
+  Serial.println("Status: running motors");
+  delay(100);
 }
 
 /** translates value into the actual motor value. Returns '0' speed if invalid input. */
@@ -287,42 +321,29 @@ void stopMotors() {
   brushL.writeMicroseconds(motorValue(0));
   brushR.writeMicroseconds(motorValue(0));
   Serial.println("Status: motors stopped");
-  delay(500);
+  delay(100);
 }
 
 /** asks for inputs, rotates servos. Options: "up", "mid", "down" */
 void rotateServos() {
-  Serial.print("Input left servo position (up, mid, down): ");
+  Serial.print("Input servo position (up, mid, down): ");
   while(Serial.available() == 0) {}
-  String left = Serial.readString();
-  Serial.println(left);
-  
-  Serial.print("Input right servo position (up, mid, down): ");
-  while(Serial.available() == 0) {}
-  String right = Serial.readString();
-  Serial.println(right);
-  
-  setServos(left, right);
+  String pos = Serial.readString();
+  Serial.println(pos);
+
+  setServos(pos);
 }
 
-/** sets servo positions to inputs: "up", "mid", "down" */
-// NOTE: doesn't account for differing up/down stuff (?)
-void setServos(String left, String right) {
-  int posL = servoPosition(left);
-  int posR = servoPosition(right);
+/** sets both servos to the input string (up, mid, down) */
+void setServos(String pos) {
+  int posNew = servoPosition(pos);
 
-  if (posL > 0) {
-    servoL.writeMicroseconds(posL);
-    Serial.println("Status: left servo moved");
+  if (posNew > 0) {
+    servoL.writeMicroseconds(posNew);
+    servoR.writeMicroseconds(posNew);
+    Serial.println("Status: servos moved");
   } else {
-    Serial.println("Error: left servo invalid input");
-  }
-  
-  if (posR > 0) {
-    servoR.writeMicroseconds(posR);
-    Serial.println("Status: right servo moved");
-  } else {
-    Serial.println("Error: right servo invalid input");
+    Serial.println("Error: servos invalid input");
   }
 }
 
@@ -339,25 +360,54 @@ int servoPosition(String input) {
   }
 }
 
-/** test to try turning 90 degrees clockwise */
+/** sets servo to new position based on XBOX input */
+void xboxServos(String upDown) {
+  if (upDown == "up" && servoPos > 1 && servoPos <= 5) {
+    // go up if current position is 2 to 5
+    servoPos--;
+  } else if (upDown == "down" && servoPos < 5 && servoPos >= 1) {
+    // go down if current position is 1 to 4
+    servoPos++;
+  } else {
+    // exit function
+    return;
+  }
+
+  int pulse = getServoPulse(servoPos);
+  if (pulse > 0) {
+    servoL.writeMicroseconds(pulse);
+    servoR.writeMicroseconds(pulse);
+  }
+}
+
+/** returns the pulse length for the input position */
+int getServoPulse(int pos) {
+  if (pos == 1) {
+    return pulseUp;
+  } else if (pos == 2) {
+    return pulseUpMid;
+  } else if (pos == 3) {
+    return pulseCenter;
+  } else if (pos == 4) {
+    return pulseDownMid;
+  } else if (pos == 5) {
+    return pulseDown;
+  } else {
+    return 0;
+  }
+}
+
+
+/** test to try turning 90 degrees clockwise (right) */
 void turn90CW() {
-  setMotors(80, 80, 1000);
-  setMotors(-70,-70,100);
+  runStopMotors(80, 80, 1000);
+  runStopMotors(-70,-70,100);
 }
 
+/** turn CCW (left) */
 void turn90CCW() {
-  setMotors(-70, -70, 1000);
-  setMotors(80,80,100);
-}
-
-/** test to try straight, left, straight, right, straight */
-void attemptCourse() {
-  setMotors(80, -70, 2000);
-  turn90CCW();
-  setMotors(80, -70, 1500);
-  turn90CW();
-  setMotors(80, -70, 2000);
-  Serial.println("Status: attempted autonomous stuff");
+  runStopMotors(-70, -70, 1000);
+  runStopMotors(80,80,100);
 }
 
 

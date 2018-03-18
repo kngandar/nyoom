@@ -70,7 +70,16 @@ def main():
         [frame,ballFound] = detectBalls(frame,hsv,green,numBalls)
         
         if len(ballFound) > 0:
-            print("Number of balls detected: " + str(len(ballFound))) 
+            print("Number of balls detected: " + str(len(ballFound)))
+
+        if len(ballFound) == 2:
+            pt1_x = (ballFound[0])[0]
+            pt1_y = (ballFound[0])[1]
+            pt1_rad = (ballFound[0])[2]
+            pt2_x = (ballFound[1])[0]
+            pt2_y = (ballFound[1])[1]
+            pt2_rad = (ballFound[1])[2]
+            cv2.rectangle(frame, (int(pt1_x),int(pt1_y)), (int(pt2_x),int(pt2_y)), outlineColor, thickness=-1)
 
         # Show the frame to our screen
         cv2.imshow("Frame", frame)

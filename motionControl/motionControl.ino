@@ -92,28 +92,34 @@ void loop() {
     } else if (input == "turnCCW") {
       turn90CCW();
     /** XBOX control commands */
-    } else if (input == "left") {
-      setMotors(-70, -70);
-    } else if (input == "right") {
-      setMotors(80,80);
-    } else if (input == "fwd") {
-      setMotors(80, -80);
-    } else if (input == "bwd") {
-      setMotors(-80, 80);
-    } else if (input == "stop") {
-      stopMotors();
-    } else if (input == "servoUp") {
-      xboxServos("up");
-    } else if (input == "servoDown") {
-      xboxServos("down");
-    } else if (input == "faceFront") {
+    } else if (input == "DU_Front") { // face front
       // figure out when we can get the "front" measurement
-    } else if (input == "panic") {
+    } else if (input == "DL_Left") {
+      setMotors(-70, -70);
+    } else if (input == "DL_Right") {
+      setMotors(80,80);
+    } else if (input == "DD_Start_RC") { // temporary stop
+      // start remote control
+      stopMotors();
+    } else if (input == "A_Motor_Forward") {
+      setMotors(80, -80);
+    } else if (input == "B_Motor_Backward") {
+      setMotors(-80, 80);
+    } else if (input == "Y_Servo_Middle") {
+      // turn servo to middle
+      // TODO
+    } else if (input == "X_Panic_Button") {
       stopMotors();
       servoL.writeMicroseconds(pulseCenter);
       servoR.writeMicroseconds(pulseCenter);
       delay(500); // dont run motors until servos are mid
       runStopMotors(-80, 80, 1000);
+    } else if (input == "stop") {
+      stopMotors();
+    } else if (input == "LB_Servo_Up") {
+      xboxServos("up");
+    } else if (input == "RB_Servo_Down") {
+      xboxServos("down");
     } else {
       Serial.println("Error: invalid input");
     }

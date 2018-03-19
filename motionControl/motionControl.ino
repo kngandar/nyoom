@@ -73,19 +73,6 @@ void loop() {
     
     if (input == "runMotors") {
       runMotors();
-    } else if (input == "100") {
-      delay(250);
-      foundGreen();
-    } else if (input == "200") {
-      delay(250);
-      foundRed();
-    } else if (input == "300") {
-      delay(250);
-      foundYellow();
-    } else if (input == "turnCW") {
-      turn90CW();
-    } else if (input == "turnCCW") {
-      turn90CCW();
     } else if (input == "stop") {
       stopMotors();
     /** Image processing commands */
@@ -98,17 +85,18 @@ void loop() {
       // figure out when we can get the "front" measurement
       imuReorient();
     } else if (input == "DL_Left") {
-      setMotors(-70, -70);
-    } else if (input == "DL_Right") {
       setMotors(80,80);
+    } else if (input == "DR_Right") {
+      setMotors(-70, -70);      
     } else if (input == "DD_Motor_Stop") {
       stopMotors();
     } else if (input == "A_Motor_Forward") {
-      setMotors(80, -80);
-    } else if (input == "B_Motor_Backward") {
       setMotors(-80, 80);
+    } else if (input == "B_Motor_Backward") {      
+      setMotors(80, -80);
     } else if (input == "Y_Servo_Middle") {
-      setServoPos3();
+      //setServoPos3();
+      stopMotors();
     } else if (input == "X_Panic_Button") {
       stopMotors();
       setServoPos3(); // set servos to mid position

@@ -12,7 +12,7 @@ def isXboxUsed(events):
 
         if event.code == "BTN_NORTH":
             if event.state == True:
-                command = "Y_Servo_Middle"
+                command = "X_Panic_Button"
 
         if event.code == "BTN_SOUTH":
             if event.state == True:
@@ -38,7 +38,7 @@ def isXboxUsed(events):
 
         if event.code == "BTN_WEST":
             if event.state == True:
-                command = "X_Panic_Button"
+                command = "Y_Servo_Middle"
                 
     print(command)
     return command

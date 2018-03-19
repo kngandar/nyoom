@@ -3,6 +3,7 @@ from collections import deque
 from time import sleep
 from inputs import get_gamepad
 from nyoom_xbox import isXboxUsed
+from nyoom_check import isDeepEnough
 import numpy as np
 import argparse
 import imutils
@@ -18,7 +19,7 @@ red = [(145, 110, 120), (195, 255, 255)]
 fontColor = (0, 165, 255)        # orange
 outlineColor = (0, 255, 255)     # yellow
 
-OB_1 = False 
+OB_1 = False
 OB_2 = False
 OB_3 = False
 OB_4 = False
@@ -26,7 +27,7 @@ OB_4 = False
 STARTING = 10
 TOO_HIGH = 11
 MOVING   = 12
-          
+
 ### FUNCTIONS ###
 def detectBalls(frame,hsv,color,numBalls):
     lower = color[0]
@@ -39,7 +40,7 @@ def detectBalls(frame,hsv,color,numBalls):
 
     ballFound = []
     ballPosition = []
-    
+
     for i in range(1,numBalls):
         if len(cnts) > 0:
             cMax = max(cnts, key=cv2.contourArea)
@@ -52,7 +53,7 @@ def detectBalls(frame,hsv,color,numBalls):
                 cv2.putText(frame, "x,y: " + str(int(x)) + ", " +  str(int(y)) , (int(x-rad),int(y-rad-rad)), cv2.FONT_HERSHEY_SIMPLEX, 0.6, fontColor,2)
                 ballPosition = [x,y,rad]
                 ballFound.append(ballPosition)
-                
+
             # All balls detected
             else:
                 break
@@ -63,14 +64,14 @@ def detectBalls(frame,hsv,color,numBalls):
 
 def main():
     # Initialization
-    camera = cv2.VideoCapture(0) 
+    camera = cv2.VideoCapture(0)
     arduino = serial.Serial('/dev/tty/ACMO',9600)
-    
+
     greenFound = False
     state1 = STARTING
-    
+
     # Script on standby until user press "Enter"
-    raw_input("Press Enter to start")  
+    raw_input("Press Enter to start")
 
     # In autonomous mode
     print("AUTONOMOUS MODE")
@@ -79,28 +80,28 @@ def main():
         events = get_gamepad()
         if isXboxUsed(events) == "None":
             break
-        
+
         # Grab the current frame
         (grabbed, frame) = camera.read()
-        
+
         # Resize the frame, blur it, and convert it to the HSV color space
         frame = imutils.resize(frame, width=600)
         blurred = cv2.GaussianBlur(frame, (11, 11), 0)
         hsv = cv2.cvtColor(blurred, cv2.COLOR_BGR2HSV)
-        
+
         # OBSTACLE 1: Go below hanging obstacle
         numBalls = 2
         if (OB_1 == False):
-            color = green           
+            color = green
             [frame,ballFound] = detectBalls(frame,hsv,color,numBalls)
-            
+
             # Found 2 points
             if (len(ballFound) == numBalls) and (not greenFound):
                 greenFound   = True
                 (x1,y1,rad1) = ballFound[0]
                 (x2,y2,rad2) = ballFound[1]
                 print("Ball 1: " + str(ballFound[0]) + " Ball 2: " + str(ballFound[1]))
-                
+
                 # If nyoom is not deep enough, go down a bit
                 if not (isDeepEnough(ballFound)):
                     print("Not deep enough")
@@ -117,7 +118,7 @@ def main():
                         sleep(0.5)                  # seconds
                         state1 = MOVING
                     # Else, do nothing, and keep going forward
-            
+
             # If green balls were previously detected and then no longer
             # Assume nyoom has passed obstacle 1
             elif (len(ballFound) < numBalls) and (greenFound):
@@ -125,24 +126,23 @@ def main():
                 OB_1 = True
                 arduino.write("DD_Motor_Stop")
                 sleep(0.5)      # seconds
-        '''
+
         # OBSTACLE 2: Go above table
-        elif (OB_2 == False):
-            color = red
-            [frame,ballFound] = detectBalls(frame,hsv,color,numBalls)
-            
+#        elif (OB_2 == False):
+#            color = red
+#            [frame,ballFound] = detectBalls(frame,hsv,color,numBalls)
+
             # Found 2 closest points
-            if (len(ballFound) == numBalls) and (not redFound):
-                redFound = True
-                (x1,y1,rad1) = ballFound[0]
-                (x2,y2,rad2) = ballFound[1]
-                print("Ball 1: " + str(ballFound[0]) + " Ball 2: " + str(ballFound[1]))
-        '''        
-        
+#            if (len(ballFound) == numBalls) and (not redFound):
+#                redFound = True
+#                (x1,y1,rad1) = ballFound[0]
+#                (x2,y2,rad2) = ballFound[1]
+#                print("Ball 1: " + str(ballFound[0]) + " Ball 2: " + str(ballFound[1])
+
         # Tested detect code
-        else: 
+        else:
             [frame,ballFound] = detectBalls(frame,hsv,green,numBalls)
-            
+
             if len(ballFound) > 0:
                 print("Number of balls detected: " + str(len(ballFound)))
 
@@ -155,7 +155,7 @@ def main():
                 pt2_rad = (ballFound[1])[2]
                 cv2.line(frame, (int(pt1_x),int(pt1_y-pt1_rad)), (int(pt2_x),int(pt2_y-pt2_rad)), outlineColor, thickness=-1)
                 cv2.line(frame, (int(pt1_x),int(pt1_y+pt1_rad)), (int(pt2_x),int(pt2_y+pt2_rad)), outlineColor, thickness=-1)
-                
+
         # Show the frame to our screen
         cv2.imshow("Frame", frame)
         key = cv2.waitKey(1) & 0xFF
@@ -172,29 +172,29 @@ def main():
         elif key == ord("y"):
             print 'Set yellow thresh'
             color = yellow
-   
-    
+
+
     # Switched to RC mode
     print("REMOTE CONTROL MODE")
     while True:
         events = get_gamepad()
         command = isXboxUsed(events)
         if command is not "None":
-            arduino.write(command)  
+            arduino.write(command)
 
         (grabbed, frame) = camera.read()
         # Resize the frame, blur it, and convert it to the HSV color space
         frame = imutils.resize(frame, width=600)
         blurred = cv2.GaussianBlur(frame, (11, 11), 0)
         hsv = cv2.cvtColor(blurred, cv2.COLOR_BGR2HSV)
-        
+
         numBalls = 2
         (frame,ballFound) = detectBalls(frame,hsv,green,numBalls)
-        
+
         # Show the frame to our screen
         cv2.imshow("Frame", frame)
         key = cv2.waitKey(1) & 0xFF
-        
+
         # If the 'q' key is pressed, stop the loop
         if key == ord("q"):
             print("Quit RC")
@@ -208,11 +208,11 @@ def main():
         elif key == ord("y"):
             print 'Set yellow thresh'
             color = yellow
-                
+
     # Cleanup the camera and close any open windows
     camera.release()
     cv2.destroyAllWindows()
-                
+
 if __name__ == "__main__":
     main()
 

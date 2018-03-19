@@ -106,6 +106,7 @@ void calibrate() {
   displayCalStatus();
 }
 
+
 /**
  * Code to test which ball colour was found
  */
@@ -135,4 +136,21 @@ void foundYellow() {
   servoPos = 5;
   runStopMotors(-100, 100, 3000);
   Serial.println("Went up for 3 seconds");
+}
+
+
+/**
+ * Code to test turning
+ */
+
+ /** test to try turning 90 degrees clockwise (right) */
+void turn90CW() {
+  runStopMotors(80, 80, 1000);
+  runStopMotors(-70,-70,100);
+}
+
+/** turn CCW (left) */
+void turn90CCW() {
+  runStopMotors(-70, -70, 1000);
+  runStopMotors(80,80,100);
 }

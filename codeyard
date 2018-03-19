@@ -1,0 +1,138 @@
+/**
+ *  Scrapped IMU code: a function, plus calibration stuff (rip)
+ */
+
+/** stays within +- tol degrees of initial angle. Enter anything in console to exit */
+void stayOnCourse() {
+  sensors_event_t initA;
+  sensors_event_t curr;
+  bno.getEvent(&initA);
+
+  int angle = initA.orientation.x;
+  int tol = 15;
+  int delta = 0;
+
+  Serial.print("Initial angle = ");
+  Serial.println(angle);
+
+  while(Serial.available() == 0) {
+    bno.getEvent(&curr);
+    delta = checkDelta(curr.orientation.x - angle);
+
+    if (delta < -tol && delta > -180) { 
+      // LH-x: go CW
+      Serial.println("going CW");
+      servoL.writeMicroseconds(pulseCenter);
+      servoR.writeMicroseconds(pulseCenter);
+      servoPos = 3;
+      runStopMotors(-70, -70, 1000);
+      delay(400);
+    } else if (delta > tol && delta < 180) {
+      // RH-x: go CCW
+      Serial.println("going CCW");
+      servoL.writeMicroseconds(pulseCenter);
+      servoR.writeMicroseconds(pulseCenter);
+      servoPos = 3;
+      runStopMotors(80, 80, 1000);
+      delay(400);
+    } else {
+      Serial.println("staying still");
+      delay(400);
+    }
+  }
+  Serial.readString();
+  Serial.println("done.");
+}
+
+/** Display sensor calibration status */
+void displayCalStatus(void) {
+  /* Get the four calibration values (0..3) */
+  /* Any sensor data reporting 0 should be ignored, */
+  /* 3 means 'fully calibrated" */
+  uint8_t system, gyro, accel, mag;
+  system = gyro = accel = mag = 0;
+  bno.getCalibration(&system, &gyro, &accel, &mag);
+
+  /* The data should be ignored until the system calibration is > 0 */
+  Serial.print("\t");
+  if (!system) {
+    Serial.print("! ");
+  }
+
+  /* Display the individual values */
+  Serial.print("Sys:");
+  Serial.print(system, DEC);
+  Serial.print(" G:");
+  Serial.print(gyro, DEC);
+  Serial.print(" A:");
+  Serial.print(accel, DEC);
+  Serial.print(" M:");
+  Serial.print(mag, DEC);
+}
+
+/** returns system calibration status as an int */
+int getCalStatus(void) {
+  /* Get the four calibration values (0..3) */
+  /* Any sensor data reporting 0 should be ignored, */
+  /* 3 means 'fully calibrated" */
+  uint8_t system, gyro, accel, mag;
+  system = gyro = accel = mag = 0;
+  bno.getCalibration(&system, &gyro, &accel, &mag);
+
+  return system;
+}
+
+/** force user to calibrate the sensors */
+void calibrate() {
+  Serial.println("Calibrate the sensor!");
+  int isGood = 0;
+  while (isGood < 3) {
+    /* Get a new sensor event */
+    sensors_event_t event;
+    bno.getEvent(&event);
+
+    /* Optional: Display calibration status */
+    displayCalStatus();
+
+    /* New line for the next sample */
+    Serial.println("");
+
+    /* Wait the specified delay before requesting nex data */
+    delay(BNO055_SAMPLERATE_DELAY_MS);
+
+    isGood = getCalStatus();
+  }
+  Serial.println("calibrated?");
+  displayCalStatus();
+}
+
+/**
+ * Code to test which ball colour was found
+ */
+
+void foundGreen() {
+  // Set servos to middle position
+  servoL.writeMicroseconds(pulseCenter);
+  servoR.writeMicroseconds(pulseCenter);
+  servoPos = 3;
+  runStopMotors(80, 80, 2000);
+  Serial.println("Rotated CW");
+}
+
+void foundRed() {
+  // Set servos to middle position
+  servoL.writeMicroseconds(pulseCenter);
+  servoR.writeMicroseconds(pulseCenter);
+  servoPos = 3;
+  runStopMotors(-70, -70, 2000);
+  Serial.println("Rotated CCW");
+}
+
+void foundYellow() {
+  // Set servos to down position
+  servoL.writeMicroseconds(pulseDown);
+  servoR.writeMicroseconds(pulseUp);
+  servoPos = 5;
+  runStopMotors(-100, 100, 3000);
+  Serial.println("Went up for 3 seconds");
+}

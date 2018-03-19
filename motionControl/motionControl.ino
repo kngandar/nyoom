@@ -5,8 +5,8 @@
 #include <utility/imumaths.h>
 
 // pin numbers
-int brushL_pin = 7;//8;
-int brushR_pin = 8;//7;
+int brushL_pin = 7;
+int brushR_pin = 8;
 int servoL_pin = 6;
 int servoR_pin = 5;
 
@@ -20,6 +20,7 @@ const int pulseDown = 2520;
 // global variable for servo position T_T
 // 1: up, 2: up-mid, 3: mid, 4: down-mid, 5: down
 int servoPos = 3;
+int imuPos = 0;
 
 // init servos
 Servo servoL, servoR, brushL, brushR;
@@ -49,8 +50,7 @@ void setup() {
   delay(500);
   
   // center servos
-  servoL.writeMicroseconds(pulseCenter);
-  servoR.writeMicroseconds(pulseCenter);
+  setServoPos3();
   delay(500);
   
   Serial.begin(9600);
@@ -63,7 +63,6 @@ void setup() {
   delay(1000);
 
   bno.setExtCrystalUse(true);
-  //calibrate();
   Serial.println("Status: ready to go!!");
 }
 
@@ -74,8 +73,6 @@ void loop() {
     
     if (input == "runMotors") {
       runMotors();
-    } else if (input == "rotateServos") {
-      rotateServos();
     } else if (input == "100") {
       delay(250);
       foundGreen();
@@ -85,37 +82,38 @@ void loop() {
     } else if (input == "300") {
       delay(250);
       foundYellow();
-    } else if (input == "goForth") {
-      stayOnCourse();
     } else if (input == "turnCW") {
       turn90CW();
     } else if (input == "turnCCW") {
       turn90CCW();
+    } else if (input == "stop") {
+      stopMotors();
+    /** Image processing commands */
+    } else if (input == "goDown") {
+      goDown();
+    } else if (input == "goUp") {
+      goUp();
     /** XBOX control commands */
     } else if (input == "DU_Front") { // face front
       // figure out when we can get the "front" measurement
+      imuReorient();
     } else if (input == "DL_Left") {
       setMotors(-70, -70);
     } else if (input == "DL_Right") {
       setMotors(80,80);
-    } else if (input == "DD_Start_RC") { // temporary stop
-      // start remote control
+    } else if (input == "DD_Motor_Stop") {
       stopMotors();
     } else if (input == "A_Motor_Forward") {
       setMotors(80, -80);
     } else if (input == "B_Motor_Backward") {
       setMotors(-80, 80);
     } else if (input == "Y_Servo_Middle") {
-      // turn servo to middle
-      // TODO
+      setServoPos3();
     } else if (input == "X_Panic_Button") {
       stopMotors();
-      servoL.writeMicroseconds(pulseCenter);
-      servoR.writeMicroseconds(pulseCenter);
-      delay(500); // dont run motors until servos are mid
+      setServoPos3(); // set servos to mid position
+      delay(400); // dont run motors until servos done
       runStopMotors(-80, 80, 1000);
-    } else if (input == "stop") {
-      stopMotors();
     } else if (input == "LB_Servo_Up") {
       xboxServos("up");
     } else if (input == "RB_Servo_Down") {
@@ -126,77 +124,44 @@ void loop() {
   }
 }
 
-
-/*
- * COLOUR SENSOR
- */
-void foundGreen() {
-  // Set servos to middle position
-  servoL.writeMicroseconds(pulseCenter);
-  servoR.writeMicroseconds(pulseCenter);
-  runStopMotors(80, 80, 2000);
-  Serial.println("Rotated CW");
-}
-
-void foundRed() {
-  // Set servos to middle position
-  servoL.writeMicroseconds(pulseCenter);
-  servoR.writeMicroseconds(pulseCenter);
-  runStopMotors(-70, -70, 2000);
-  Serial.println("Rotated CCW");
-}
-
-void foundYellow() {
-  // Set servos to down position
-  servoL.writeMicroseconds(pulseDown);
-  servoR.writeMicroseconds(pulseUp);
-  runStopMotors(-100, 100, 3000);
-  Serial.println("Went up for 3 seconds");
-}
-
-
 /*
  * IMU SENSOR
  */
-
-/** stays within +- tol degrees of initial angle. Enter anything in console to exit */
-void stayOnCourse() {
-  sensors_event_t initA;
-  sensors_event_t curr;
-  bno.getEvent(&initA);
-
-  int angle = initA.orientation.x;
-  int tol = 15;
-  int delta = 0;
-
-  Serial.print("Initial angle = ");
-  Serial.println(angle);
-
-  while(Serial.available() == 0) {
+ 
+/** 1st time: gets a reading for imuPos. After: reorient to initial value */
+void imuReorient() {
+  if (imuPos == 0) {
+    sensors_event_t pos;
+    bno.getEvent(&pos);
+    imuPos = pos.orientation.x;
+  } else {
+    sensors_event_t curr;
+    int tol = 15;
+    int delta = 0;
+    
     bno.getEvent(&curr);
-    delta = checkDelta(curr.orientation.x - angle);
-
+    delta = checkDelta(curr.orientation.x - imuPos);
+  
     if (delta < -tol && delta > -180) { 
       // LH-x: go CW
-      Serial.println("going CW");
-      servoL.writeMicroseconds(pulseCenter);
-      servoR.writeMicroseconds(pulseCenter);
-      runStopMotors(-70, -70, 1000);
-      delay(400);
+      if (servoPos != 3) {
+        setServoPos3();
+        delay(400);
+      }
+      setMotors(-70, -70);
+      while (delta < -tol && delta > -180) {}
+      stopMotors();
     } else if (delta > tol && delta < 180) {
       // RH-x: go CCW
-      Serial.println("going CCW");
-      servoL.writeMicroseconds(pulseCenter);
-      servoR.writeMicroseconds(pulseCenter);
-      runStopMotors(80, 80, 1000);
-      delay(400);
-    } else {
-      Serial.println("staying still");
-      delay(400);
-    }
+      if (servoPos != 3) {
+        setServoPos3();
+        delay(400);
+      }
+      setMotors(80, 80);
+      while (delta > tol && delta < 180) {}
+      stopMotors();
+    } 
   }
-  Serial.readString();
-  Serial.println("done.");
 }
 
 /** correct 0/360 boundary: put delta into the "expected" section */
@@ -208,69 +173,6 @@ int checkDelta(int delta) {
   } else {
     return delta;
   }
-}
-
-/** Display sensor calibration status */
-void displayCalStatus(void) {
-  /* Get the four calibration values (0..3) */
-  /* Any sensor data reporting 0 should be ignored, */
-  /* 3 means 'fully calibrated" */
-  uint8_t system, gyro, accel, mag;
-  system = gyro = accel = mag = 0;
-  bno.getCalibration(&system, &gyro, &accel, &mag);
-
-  /* The data should be ignored until the system calibration is > 0 */
-  Serial.print("\t");
-  if (!system) {
-    Serial.print("! ");
-  }
-
-  /* Display the individual values */
-  Serial.print("Sys:");
-  Serial.print(system, DEC);
-  Serial.print(" G:");
-  Serial.print(gyro, DEC);
-  Serial.print(" A:");
-  Serial.print(accel, DEC);
-  Serial.print(" M:");
-  Serial.print(mag, DEC);
-}
-
-/** returns system calibration status as an int */
-int getCalStatus(void)
-{
-  /* Get the four calibration values (0..3) */
-  /* Any sensor data reporting 0 should be ignored, */
-  /* 3 means 'fully calibrated" */
-  uint8_t system, gyro, accel, mag;
-  system = gyro = accel = mag = 0;
-  bno.getCalibration(&system, &gyro, &accel, &mag);
-
-  return system;
-}
-
-/** force user to calibrate the sensors */
-void calibrate() {
-  Serial.println("Calibrate the sensor!");
-  int isGood = 0;
-  while (isGood < 3) {
-    /* Get a new sensor event */
-    sensors_event_t event;
-    bno.getEvent(&event);
-
-    /* Optional: Display calibration status */
-    displayCalStatus();
-
-    /* New line for the next sample */
-    Serial.println("");
-
-    /* Wait the specified delay before requesting nex data */
-    delay(BNO055_SAMPLERATE_DELAY_MS);
-
-    isGood = getCalStatus();
-  }
-  Serial.println("calibrated?");
-  displayCalStatus();
 }
 
 
@@ -330,42 +232,6 @@ void stopMotors() {
   delay(100);
 }
 
-/** asks for inputs, rotates servos. Options: "up", "mid", "down" */
-void rotateServos() {
-  Serial.print("Input servo position (up, mid, down): ");
-  while(Serial.available() == 0) {}
-  String pos = Serial.readString();
-  Serial.println(pos);
-
-  setServos(pos);
-}
-
-/** sets both servos to the input string (up, mid, down) */
-void setServos(String pos) {
-  int posNew = servoPosition(pos);
-
-  if (posNew > 0) {
-    servoL.writeMicroseconds(posNew);
-    servoR.writeMicroseconds(posNew);
-    Serial.println("Status: servos moved");
-  } else {
-    Serial.println("Error: servos invalid input");
-  }
-}
-
-/** returns servo position constant for an input string, or 0 if invalid input */
-int servoPosition(String input) {
-  if (input == "up") {
-    return pulseUp;
-  } else if (input == "mid") {
-    return pulseCenter;
-  } else if (input == "down") {
-    return pulseDown;
-  } else {
-    return 0;
-  }
-}
-
 /** sets servo to new position based on XBOX input */
 void xboxServos(String upDown) {
   if (upDown == "up" && servoPos > 1 && servoPos <= 5) {
@@ -379,41 +245,75 @@ void xboxServos(String upDown) {
     return;
   }
 
-  int pulse = getServoPulse(servoPos);
-  if (pulse > 0) {
-    servoL.writeMicroseconds(pulse);
-    servoR.writeMicroseconds(pulse);
-  }
-}
-
-/** returns the pulse length for the input position */
-int getServoPulse(int pos) {
-  if (pos == 1) {
-    return pulseUp;
-  } else if (pos == 2) {
-    return pulseUpMid;
-  } else if (pos == 3) {
-    return pulseCenter;
-  } else if (pos == 4) {
-    return pulseDownMid;
-  } else if (pos == 5) {
-    return pulseDown;
+  // left servo is 'default' naming convention. Right servo is opposite
+  if (servoPos == 1) {
+    setServoPos1();
+  } else if (servoPos == 2) {
+    setServoPos2();
+  } else if (servoPos == 3) {
+    setServoPos3();
+  } else if (servoPos == 4) {
+    setServoPos4();
+  } else if (servoPos == 5) {
+    setServoPos5();
   } else {
-    return 0;
+    return;
   }
 }
 
-
-/** test to try turning 90 degrees clockwise (right) */
-void turn90CW() {
-  runStopMotors(80, 80, 1000);
-  runStopMotors(-70,-70,100);
+void setServoPos1() {
+  servoL.writeMicroseconds(pulseUp);
+  servoR.writeMicroseconds(pulseDown);
+  servoPos = 1;
 }
 
-/** turn CCW (left) */
-void turn90CCW() {
-  runStopMotors(-70, -70, 1000);
-  runStopMotors(80,80,100);
+void setServoPos2() {
+  servoL.writeMicroseconds(pulseUpMid);
+  servoR.writeMicroseconds(pulseDownMid); 
+  servoPos = 2; 
+}
+
+void setServoPos3() {
+  servoL.writeMicroseconds(pulseCenter);
+  servoR.writeMicroseconds(pulseCenter);
+  servoPos = 3;
+}
+
+void setServoPos4() {
+  servoL.writeMicroseconds(pulseDownMid);
+  servoR.writeMicroseconds(pulseUpMid);
+  servoPos = 4;
+}
+
+void setServoPos5() {
+  servoL.writeMicroseconds(pulseDown);
+  servoR.writeMicroseconds(pulseUp);
+  servoPos = 5;
+}
+
+
+/**
+ * IMAGE PROCESSING COMMANDS
+ */
+ 
+void goDown() {
+  // set servos to pos 1 (up)
+  setServoPos1();
+  delay(100);
+  // go forward for .5 seconds
+  runStopMotors(80, -80, 500);
+  // set servos back to initial position
+  setServoPos3();
+}
+
+void goUp() {
+  // set servos to pos 5 (down)
+  setServoPos5();
+  delay(100);
+  // go forward for .5 seconds
+  runStopMotors(80, -80, 500);
+  // set servos back to initial position
+  setServoPos3();
 }
 
 

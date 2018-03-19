@@ -5,7 +5,7 @@
 import serial
 from inputs import get_gamepad
 
-ser = serial.Serial('COM3',9600) 
+ser = serial.Serial('/dev/ttyACM0',9600) 
 
 try:
     print('Press CTRL+C to quit')
@@ -36,9 +36,9 @@ try:
             if event.code == "BTN_NORTH":
 
                 if event.state == True:
-
-                    print("Y_Servo_Middle")
-                    ser.write("Y_Servo_Middle")
+                    print("X_Panic_Button")
+                    ser.write("X_Panic_Button")
+                    
 
             if event.code == "BTN_SOUTH":
 
@@ -82,8 +82,9 @@ try:
 
                 if event.state == True:
 
-                    print("X_Panic_Button")
-                    ser.write("X_Panic_Button")
+                    print("Y_Servo_Middle")
+                    ser.write("Y_Servo_Middle")
+                    
 
             #print("#### End ####")
 

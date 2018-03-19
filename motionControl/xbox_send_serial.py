@@ -1,11 +1,8 @@
 #!/usr/bin/env python
-
 # coding: Latin-1
-
 # Load library functions we want
 
 import serial
-
 from inputs import get_gamepad
 
 ser = serial.Serial('COM3',9600) 
@@ -66,8 +63,8 @@ try:
 
                 elif event.state == 1:
 
-                    print("DD_Start_RC")
-                    ser.write("DD_Start_RC")
+                    print("DD_Motor_Stop")
+                    ser.write("DD_Motor_Stop")
 
             if event.code == "ABS_HAT0X":
 

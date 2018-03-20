@@ -40,6 +40,8 @@ def isXboxUsed(events):
             if event.state == True:
                 command = "Y" #Servo_Middle
                 
-    print(command)
+        if command is not "None":
+            print(command)
+            
     return command
                     

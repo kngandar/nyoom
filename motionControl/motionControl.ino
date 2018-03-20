@@ -231,6 +231,7 @@ void stopMotors() {
 
 /** stop and account for forward drift */
 void fwStop() {
+  stopMotors();
   setMotors(80, -80);
   delay(400);
   stopMotors();
@@ -238,6 +239,7 @@ void fwStop() {
 
 /** stop and account for backward drift */
 void bwStop() {
+  stopMotors();
   setMotors(-80, 80);
   delay(400);
   stopMotors();

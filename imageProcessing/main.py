@@ -3,7 +3,7 @@ from collections import deque
 from time import sleep
 from inputs import get_gamepad
 from nyoom_xbox import isXboxUsed
-from nyoom_check import isDeepEnough
+import nyoom_check
 import numpy as np
 import argparse
 import imutils
@@ -12,9 +12,9 @@ import serial
 
 ### CONSTANTS ###
 # Define HSV range of colors (lower, upper)
-green = [(29, 86, 6), (64, 255, 255)]
 yellow = [(10, 120, 120), (50, 255, 255)]
 red = [(145, 110, 120), (195, 255, 255)]
+green = [(29, 86, 6), (64, 255, 255)]
 
 fontColor = (0, 165, 255)        # orange
 outlineColor = (0, 255, 255)     # yellow
@@ -24,9 +24,16 @@ OB_2 = False
 OB_3 = False
 OB_4 = False
 
-STARTING = 10
-TOO_HIGH = 11
-MOVING   = 12
+STOPPED = 10
+MOVING = 11
+
+GO_LEFT = 20
+GO_RIGHT = 21
+
+
+### VARIABLES ###
+MIN_RAD = 15
+
 
 ### FUNCTIONS ###
 def detectBalls(frame,hsv,color,numBalls):
@@ -47,7 +54,7 @@ def detectBalls(frame,hsv,color,numBalls):
             ((x,y), rad) = cv2.minEnclosingCircle(cMax)
             #print("x,y,rad:" + str([x,y,rad]))
 
-            if rad > 10:
+            if rad > MIN_RAD:
                 cv2.circle(frame, (int(x), int(y)), int(rad), outlineColor, 2)
                 cv2.putText(frame, "r: " + str(int(rad)), (int(x-rad),int(y-rad)),cv2.FONT_HERSHEY_SIMPLEX, 0.6, fontColor,2)
                 cv2.putText(frame, "x,y: " + str(int(x)) + ", " +  str(int(y)) , (int(x-rad),int(y-rad-rad)), cv2.FONT_HERSHEY_SIMPLEX, 0.6, fontColor,2)
@@ -67,8 +74,17 @@ def main():
     camera = cv2.VideoCapture(0)
     arduino = serial.Serial('/dev/tty/ACMO',115200)
 
-    greenFound = False
-    state1 = STARTING
+    firstYellowFound = False
+    firstRedFound = False
+    firstGreenFound = False
+    state1 = STOPPED
+    state2 = STOPPED
+    state3 = STOPPED
+    center2 = False    
+    center3 = False
+    
+    RC = False
+    numBalls = 2
 
     # Script on standby until user press "Enter"
     raw_input("Press Enter to start")
@@ -81,6 +97,7 @@ def main():
             events = get_gamepad()
             if isXboxUsed(events) == "DU":
                 print("found xbox, switch over fool")
+                RC = True
                 break
         except:
             pass
@@ -93,125 +110,203 @@ def main():
         blurred = cv2.GaussianBlur(frame, (11, 11), 0)
         hsv = cv2.cvtColor(blurred, cv2.COLOR_BGR2HSV)
 
+        # -------------------------------------
         # OBSTACLE 1: Go below hanging obstacle
-        numBalls = 2
+        # -------------------------------------
         if (OB_1 == False):
+            color = yellow
+            [frame,ballFound] = detectBalls(frame,hsv,color,numBalls)
+            
+            # Check if 2 balls detected
+            if len(ballFound) == numBalls:
+                if not firstYellowFound:
+                    firstYellowFound = True
+                    
+                # Whether this is first time or not, always check for height range
+                if not nyoom_check.isDeepEnough(ballFound):
+                    print("Not deep enough")                        
+                    arduino.write("goDown")
+                    state1 = STOPPED
+                else:
+                    # If nyoom is not moving and is deep enough, go forward
+                    if state1 == STOPPED:
+                        arduino.write("goFWD")
+                        state1 = MOVING
+                    # Else do nothing since nyoom is currently moving
+                
+            else:
+                # No ball detected but yellow balls were already detected
+                # Finished obstacle 1
+                if firstYellowFound:
+                    print("Obstacle 1 complete")
+                    OB_1 = True
+                    arduino.write("fwStop")
+                # No ball detected and no yellow balls have been detected at all
+                # Nyoom is not close enough to obstacle to start responding (init)
+                else:
+                    print("Nyoom still can't see hanging wall")
+                    arduino.write("goFWD")
+                    sleep(1.5)    # seconds
+                    arduino.write("fwStop")
+                    
+
+        # --------------------------
+        # OBSTACLE 2: Go above table
+        # --------------------------
+        elif (OB_2 == False):
+            color = red
+            [frame,ballFound] = detectBalls(frame,hsv,color,numBalls)
+            
+            # Check if 2 balls detected
+            if len(ballFound) == numBalls:
+                if not firstRedFound:
+                    firstRedFound = True
+                  
+                # Aligns nyoom to middle of table ish if not centered
+                if not center2:
+                    dir = nyoom_check.checkCentered(ballFound)
+                    if dir == GO_LEFT:
+                        print("Not centered: need to move left")
+                        arduino.write("moveL")
+                    elif dir == GO_RIGHT:
+                        print("Not centered: need to move right")
+                        arduino.write("moveR")
+                    else:
+                        print("Centered")
+                        center2 = True
+                
+                # Check height ONLY once nyoom is centered
+                else:
+                    # Whether this is first time or not, always check for height range
+                    if not nyoom_check.isAboveTable(ballFound):
+                        print("Not high enough")
+                        arduino.write("goUp")
+                        state2 = STOPPED
+                    else: 
+                        # If nyoom is not moving and is above table, go forward
+                        if state2 == STOPPED:
+                            arduino.write("goFWD")
+                            state2 = MOVING
+                        # Else do nothing since nyoom is currently moving
+            
+            else:
+                # No ball detected but red balls were already detected
+                # Finished obstacle 2
+                if firstRedFound:
+                    print("Obstacle 2 complete")
+                    OB_2 = True
+                    arduino.write("fwStop")
+                # No ball detected and no red balls have been detected at all
+                # Nyoom is not close enough to obstacle to start responding (init)
+                else:
+                    print("Nyoom still can't see table")
+                    arduino.write("goFWD")
+                    sleep(1.5)      # seconds
+                    arduino.write("fwStop")
+                        
+        
+        # -----------------------------------
+        # OBSTACLE 3: Go through hole opening
+        # -----------------------------------
+        elif (OB_3 == False):
+            numBalls = 4
             color = green
             [frame,ballFound] = detectBalls(frame,hsv,color,numBalls)
-
-            # Found 2 points
-            if (len(ballFound) == numBalls) and (not greenFound):
-                greenFound   = True
-                (x1,y1,rad1) = ballFound[0]
-                (x2,y2,rad2) = ballFound[1]
-                print("Ball 1: " + str(ballFound[0]) + " Ball 2: " + str(ballFound[1]))
-
-                # If nyoom is not deep enough, go down a bit
-                if not (isDeepEnough(ballFound)):
-                    print("Not deep enough")
-                    arduino.write("goDown")
-                    sleep(0.5)                      # seconds
-                    state1 = TOO_HIGH
+            
+            # Check if 4 balls are detected
+            if len(ballFound) == numBalls:
+                if not firstGreenFound:
+                    firstGreenFound = True
+                
+                # Aligns nyoom to middle of opening if not centered
+                if not center3:
+                    dir = nyoom_check.checkOpening(ballFound)
+                    if dir == GO_LEFT:
+                        print("Not centered: need to move left")
+                        arduino.write("moveL")
+                    elif dir == GO_RIGHT:
+                        print("Not centered: need to move right")
+                        arduino.write("moveR")
+                    else:
+                        print("Centered")
+                        center3 = True
+                
+                # Go through to opening ONLY once nyoom is centered
                 else:
-                    # If deep enough, send go forward command
-                    if state1 == STARTING:
-                        print("Deep enough")
-                        arduino.write("Y_Servo_Middle")
-                        sleep(0.5)                  # seconds
-                        arduino.write("A_Motor_Forward")
-                        sleep(0.5)                  # seconds
-                        state1 = MOVING
-                    # Else, do nothing, and keep going forward
-
-            # If green balls were previously detected and then no longer
-            # Assume nyoom has passed obstacle 1
-            elif (len(ballFound) < numBalls) and (greenFound):
-                print("Obstacle 1 complete")
-                OB_1 = True
-                arduino.write("DD_Motor_Stop")
-                sleep(0.5)      # seconds
-
-        # OBSTACLE 2: Go above table
-#        elif (OB_2 == False):
-#            color = red
-#            [frame,ballFound] = detectBalls(frame,hsv,color,numBalls)
-
-            # Found 2 closest points
-#            if (len(ballFound) == numBalls) and (not redFound):
-#                redFound = True
-#                (x1,y1,rad1) = ballFound[0]
-#                (x2,y2,rad2) = ballFound[1]
-#                print("Ball 1: " + str(ballFound[0]) + " Ball 2: " + str(ballFound[1])
-
-        # Tested detect code
+                    if state3 == STOPPED:
+                        arduino.write("goFWD")
+                        state3 = MOVING
+                    # Else do nothing since nyoom is currently moving                
+                 
+            else:
+                # No ball detected but green balls were already detected
+                # Finished obstacle 3
+                if firstGreenFound:
+                    print("Obstacle 3 complete")
+                    OB_3 = True
+                    arduino.write("fwStop")
+                # No ball detected and no green balls have been detected at all
+                # Nyoom is not close enough to obstacle to start responding (init)
+                else:
+                    print("Nyoom can't see opening")
+                    arduino.write("goFWD")
+                    sleep(1.5)      # seconds
+                    arduino.write("fwStop")
+                    
+        # ----------------------------
+        # Completed all 3 obstacles
+        # Switch to RC immediately
+        # ----------------------------
         else:
-            [frame,ballFound] = detectBalls(frame,hsv,green,numBalls)
-
-            if len(ballFound) > 0:
-                print("Number of balls detected: " + str(len(ballFound)))
-
-            if len(ballFound) == 2:
-                pt1_x = (ballFound[0])[0]
-                pt1_y = (ballFound[0])[1]
-                pt1_rad = (ballFound[0])[2]
-                pt2_x = (ballFound[1])[0]
-                pt2_y = (ballFound[1])[1]
-                pt2_rad = (ballFound[1])[2]
-                cv2.line(frame, (int(pt1_x),int(pt1_y-pt1_rad)), (int(pt2_x),int(pt2_y-pt2_rad)), outlineColor, thickness=-1)
-                cv2.line(frame, (int(pt1_x),int(pt1_y+pt1_rad)), (int(pt2_x),int(pt2_y+pt2_rad)), outlineColor, thickness=-1)
-
+            RC = True
+            break       
+                
         # Show the frame to our screen
         cv2.imshow("Frame", frame)
         key = cv2.waitKey(1) & 0xFF
-
+        
         # If the 'q' key is pressed, stop the loop
         if key == ord("q"):
+            print("Quit Autonomous")
             break
-        elif key == ord("g"):
-            print 'Set green thresh'
-            color = green
-        elif key == ord("r"):
-            print 'Set red thresh'
-            color= red
-        elif key == ord("y"):
-            print 'Set yellow thresh'
-            color = yellow
 
-
+            
     # Switched to RC mode
-    print("REMOTE CONTROL MODE")
-    while True:
-        events = get_gamepad()
-        command = isXboxUsed(events)
-        if command is not "None":
-            arduino.write(command)
+    if RC:
+        print("REMOTE CONTROL MODE")
+        color = yellow
+        while True:
+            events = get_gamepad()
+            command = isXboxUsed(events)
+            if command is not "None":
+                arduino.write(command)
 
-        (grabbed, frame) = camera.read()
-        # Resize the frame, blur it, and convert it to the HSV color space
-        frame = imutils.resize(frame, width=600)
-        blurred = cv2.GaussianBlur(frame, (11, 11), 0)
-        hsv = cv2.cvtColor(blurred, cv2.COLOR_BGR2HSV)
+            (grabbed, frame) = camera.read()
+            # Resize the frame, blur it, and convert it to the HSV color space
+            frame = imutils.resize(frame, width=600)
+            blurred = cv2.GaussianBlur(frame, (11, 11), 0)
+            hsv = cv2.cvtColor(blurred, cv2.COLOR_BGR2HSV)
 
-        numBalls = 2
-        (frame,ballFound) = detectBalls(frame,hsv,green,numBalls)
+            numBalls = 2
+            (frame,ballFound) = detectBalls(frame,hsv,color,numBalls)
 
-        # Show the frame to our screen
-        cv2.imshow("Frame", frame)
-        key = cv2.waitKey(1) & 0xFF
+            # Show the frame to our screen
+            cv2.imshow("Frame", frame)
+            key = cv2.waitKey(1) & 0xFF
 
-        # If the 'q' key is pressed, stop the loop
-        if key == ord("q"):
-            print("Quit RC")
-            break
-        elif key == ord("g"):
-            print 'Set green thresh'
-            color = green
-        elif key == ord("r"):
-            print 'Set red thresh'
-            color= red
-        elif key == ord("y"):
-            print 'Set yellow thresh'
-            color = yellow
+            # If the 'q' key is pressed, stop the loop
+            if key == ord("q"):
+                print("Quit RC")
+                break
+            elif key == ord("g"):
+                print 'Set green thresh'
+                color = green
+            elif key == ord("r"):
+                print 'Set red thresh'
+                color= red
+            elif key == ord("y"):
+                print 'Set yellow thresh'
+                color = yellow
 
     # Cleanup the camera and close any open windows
     camera.release()

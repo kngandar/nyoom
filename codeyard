@@ -180,10 +180,11 @@ void runMotors() {
 }
 
 /**
- * 
+ * Code to move servos to 5 positions (switched to just 3)
  */
 const int pulseUpMid = 1114;
 const int pulseDownMid = 2036;
+int servoPos = 3;
 
 void setServoPos2() {
   servoL.writeMicroseconds(pulseDownMid);
@@ -195,4 +196,33 @@ void setServoPos4() {
   servoL.writeMicroseconds(pulseUpMid);
   servoR.writeMicroseconds(pulseDownMid); 
   servoPos = 4; 
+}
+
+/** sets servo to new position based on XBOX input */
+void xboxServos(String upDown) {
+  if (upDown == "up" && servoPos > 1 && servoPos <= 5) {
+    // go up if current position is 2 to 5
+    servoPos--;
+  } else if (upDown == "down" && servoPos < 5 && servoPos >= 1) {
+    // go down if current position is 1 to 4
+    servoPos++;
+  } else {
+    // exit function
+    return;
+  }
+
+  // left servo is 'default' naming convention. Right servo is opposite
+  if (servoPos == 1) {
+    setServoPos1();
+  } else if (servoPos == 2) {
+    setServoPos2();
+  } else if (servoPos == 3) {
+    setServoPos3();
+  } else if (servoPos == 4) {
+    setServoPos4();
+  } else if (servoPos == 5) {
+    setServoPos5();
+  } else {
+    return;
+  }
 }

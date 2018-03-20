@@ -267,8 +267,8 @@ void xboxServos(String upDown) {
 }
 
 void setServoDown() {
-  servoL.writeMicroseconds(pulseUp);
-  servoR.writeMicroseconds(pulseDown);
+  servoL.writeMicroseconds(pulseDown);
+  servoR.writeMicroseconds(pulseUp);
   servoPos = 3;
 }
 
@@ -279,8 +279,8 @@ void setServoMid() {
 }
 
 void setServoUp() {
-  servoL.writeMicroseconds(pulseDown);
-  servoR.writeMicroseconds(pulseUp);
+  servoL.writeMicroseconds(pulseUp);
+  servoR.writeMicroseconds(pulseDown);
   servoPos = 1;
 }
 

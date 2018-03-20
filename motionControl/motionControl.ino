@@ -80,6 +80,10 @@ void loop() {
       goDown();
     } else if (input == "goUp") {
       goUp();
+    } else if (input == "fwStop") {
+      fwStop();
+    } else if (input == "bwStop") {
+      bwStop();
     /** XBOX control commands */
     } else if (input == "DU") { // face front
       // figure out when we can get the "front" measurement
@@ -197,7 +201,7 @@ int checkDelta(int delta) {
 void runStopMotors(int left, int right, int runTime) {
   brushL.writeMicroseconds(motorValue(left));
   brushR.writeMicroseconds(motorValue(right));
-  Serial.println("Status: running motors");
+  //Serial.println("Status: running motors");
   delay(runTime);
   stopMotors();
 }
@@ -205,7 +209,7 @@ void runStopMotors(int left, int right, int runTime) {
 void setMotors(int left, int right) {
   brushL.writeMicroseconds(motorValue(left));
   brushR.writeMicroseconds(motorValue(right));
-  Serial.println("Status: running motors");
+  //Serial.println("Status: running motors");
   delay(100);
 }
 
@@ -221,9 +225,24 @@ int motorValue(int value) {
 void stopMotors() {
   brushL.writeMicroseconds(motorValue(0));
   brushR.writeMicroseconds(motorValue(0));
-  Serial.println("Status: motors stopped");
+  //Serial.println("Status: motors stopped");
   delay(100);
 }
+
+/** stop and account for forward drift */
+void fwStop() {
+  setMotors(80, -80);
+  delay(400);
+  stopMotors();
+}
+
+/** stop and account for backward drift */
+void bwStop() {
+  setMotors(-80, 80);
+  delay(400);
+  stopMotors();
+}
+
 
 /** sets servo to new position based on XBOX input */
 void xboxServos(String upDown) {

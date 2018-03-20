@@ -65,7 +65,7 @@ def detectBalls(frame,hsv,color,numBalls):
 def main():
     # Initialization
     camera = cv2.VideoCapture(0)
-    arduino = serial.Serial('/dev/tty/ACMO',9600)
+    arduino = serial.Serial('/dev/tty/ACMO',115200)
 
     greenFound = False
     state1 = STARTING

@@ -53,7 +53,7 @@ void setup() {
   setServoPos3();
   delay(500);
   
-  Serial.begin(9600);
+  Serial.begin(115200);
   
   // Look for IMU
   if(!bno.begin()) {
@@ -85,30 +85,30 @@ void loop() {
     } else if (input == "goUp") {
       goUp();
     /** XBOX control commands */
-    } else if (input == "DU_Front") { // face front
+    } else if (input == "DU") { // face front
       // figure out when we can get the "front" measurement
       imuReorient();
-    } else if (input == "DL_Left") {
+    } else if (input == "DL") {
       setMotors(80,80);
-    } else if (input == "DR_Right") {
+    } else if (input == "DR") {
       setMotors(-70, -70);      
-    } else if (input == "DD_Motor_Stop") {
+    } else if (input == "DD") {
       stopMotors();
-    } else if (input == "A_Motor_Forward") {
+    } else if (input == "A") {
       setMotors(-80, 80);
-    } else if (input == "B_Motor_Backward") {      
+    } else if (input == "B") {      
       setMotors(80, -80);
-    } else if (input == "Y_Servo_Middle") {
+    } else if (input == "Y") {
       //setServoPos3();
       stopMotors();
-    } else if (input == "X_Panic_Button") {
+    } else if (input == "X") {
       stopMotors();
       setServoPos3(); // set servos to mid position
       delay(400); // dont run motors until servos done
       runStopMotors(-80, 80, 1000);
-    } else if (input == "LB_Servo_Up") {
+    } else if (input == "LB") {
       xboxServos("up");
-    } else if (input == "RB_Servo_Down") {
+    } else if (input == "RB") {
       xboxServos("down");
     } else {
       Serial.println("Error: invalid input");

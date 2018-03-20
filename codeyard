@@ -154,3 +154,27 @@ void turn90CCW() {
   runStopMotors(-70, -70, 1000);
   runStopMotors(80,80,100);
 }
+
+/**
+ * Function for testing motors
+ */
+
+/** asks for inputs, runs the motors, stops motors */
+void runMotors() {
+  Serial.print("Input left motor speed: ");
+  while(Serial.available() == 0) {}
+  int speedL = Serial.parseInt();
+  Serial.println(speedL, DEC);
+  
+  Serial.print("Input right motor speed: ");
+  while(Serial.available() == 0) {}
+  int speedR = Serial.parseInt();
+  Serial.println(speedR, DEC);
+  
+  Serial.print("Input time [ms]: ");
+  while(Serial.available() == 0) {}
+  int runTime = Serial.parseInt();
+  Serial.println(runTime, DEC);
+  
+  runStopMotors(speedL, speedR, runTime);
+}

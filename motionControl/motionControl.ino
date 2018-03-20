@@ -63,6 +63,12 @@ void setup() {
   delay(1000);
 
   bno.setExtCrystalUse(true);
+  // check IMU calibration
+//  while (Serial.available() == 0) {
+//    displayCalStatus();
+//    delay(500);
+//  }  
+
   Serial.println("Status: ready to go!!");
 }
 
@@ -71,9 +77,7 @@ void loop() {
   if (Serial.available() > 0) {
     String input = Serial.readString();
     
-    if (input == "runMotors") {
-      runMotors();
-    } else if (input == "stop") {
+    if (input == "stop") {
       stopMotors();
     /** Image processing commands */
     } else if (input == "goDown") {
@@ -115,6 +119,32 @@ void loop() {
 /*
  * IMU SENSOR
  */
+
+/** Display sensor calibration status */
+void displayCalStatus(void) {
+  /* Get the four calibration values (0..3) */
+  /* Any sensor data reporting 0 should be ignored, */
+  /* 3 means 'fully calibrated" */
+  uint8_t system, gyro, accel, mag;
+  system = gyro = accel = mag = 0;
+  bno.getCalibration(&system, &gyro, &accel, &mag);
+
+  /* The data should be ignored until the system calibration is > 0 */
+  Serial.print("\t");
+  if (!system) {
+    Serial.print("! ");
+  }
+
+  /* Display the individual values */
+  Serial.print("Sys:");
+  Serial.print(system, DEC);
+  Serial.print(" G:");
+  Serial.print(gyro, DEC);
+  Serial.print(" A:");
+  Serial.print(accel, DEC);
+  Serial.print(" M:");
+  Serial.print(mag, DEC);
+}
  
 /** 1st time: gets a reading for imuPos. After: reorient to initial value */
 void imuReorient() {
@@ -167,26 +197,6 @@ int checkDelta(int delta) {
 /*
  * MOTOR AND SERVO
  */
- 
-/** asks for inputs, runs the motors, stops motors */
-void runMotors() {
-  Serial.print("Input left motor speed: ");
-  while(Serial.available() == 0) {}
-  int speedL = Serial.parseInt();
-  Serial.println(speedL, DEC);
-  
-  Serial.print("Input right motor speed: ");
-  while(Serial.available() == 0) {}
-  int speedR = Serial.parseInt();
-  Serial.println(speedR, DEC);
-  
-  Serial.print("Input time [ms]: ");
-  while(Serial.available() == 0) {}
-  int runTime = Serial.parseInt();
-  Serial.println(runTime, DEC);
-  
-  runStopMotors(speedL, speedR, runTime);
-}
 
 /** sets and stops the motors */
 void runStopMotors(int left, int right, int runTime) {
@@ -249,16 +259,16 @@ void xboxServos(String upDown) {
   }
 }
 
-void setServoPos1() {
+void setServoPos5() {
   servoL.writeMicroseconds(pulseUp);
   servoR.writeMicroseconds(pulseDown);
-  servoPos = 1;
+  servoPos = 5;
 }
 
-void setServoPos2() {
+void setServoPos4() {
   servoL.writeMicroseconds(pulseUpMid);
   servoR.writeMicroseconds(pulseDownMid); 
-  servoPos = 2; 
+  servoPos = 4; 
 }
 
 void setServoPos3() {
@@ -267,16 +277,16 @@ void setServoPos3() {
   servoPos = 3;
 }
 
-void setServoPos4() {
+void setServoPos2() {
   servoL.writeMicroseconds(pulseDownMid);
   servoR.writeMicroseconds(pulseUpMid);
-  servoPos = 4;
+  servoPos = 2;
 }
 
-void setServoPos5() {
+void setServoPos1() {
   servoL.writeMicroseconds(pulseDown);
   servoR.writeMicroseconds(pulseUp);
-  servoPos = 5;
+  servoPos = 1;
 }
 
 

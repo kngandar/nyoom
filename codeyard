@@ -226,3 +226,14 @@ void xboxServos(String upDown) {
     return;
   }
 }
+
+/** 
+ * runs motors for specified time, then stops
+ */
+void runStopMotors(int left, int right, int runTime) {
+  brushL.writeMicroseconds(motorValue(left));
+  brushR.writeMicroseconds(motorValue(right));
+  //Serial.println("Status: running motors");
+  delay(runTime);
+  stopMotors();
+}

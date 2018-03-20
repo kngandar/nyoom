@@ -15,17 +15,19 @@ const int pulseUp = 675;
 const int pulseCenter = 1553;
 const int pulseDown = 2520;
 
+const int servoDelay = 400;
+
 int imuPos = 0; // global to store IMU "fwd" position
 int servoPos = 2; // global for servo position. 1=up, 2=mid, 3=down
 
 // init servos
 Servo servoL, servoR, brushL, brushR;
 
-//IMU setup
+/** IMU setup */
 /* Set the delay between fresh samples */
 #define BNO055_SAMPLERATE_DELAY_MS (400)
-
 Adafruit_BNO055 bno = Adafruit_BNO055(55);
+
 
 void setup() {
   // attach motors to pins
@@ -47,7 +49,7 @@ void setup() {
   
   // center servos
   setServoMid();
-  delay(500);
+  delay(servoDelay);
   
   Serial.begin(115200);
   
@@ -60,10 +62,10 @@ void setup() {
 
   bno.setExtCrystalUse(true);
   // check IMU calibration
-//  while (Serial.available() == 0) {
-//    displayCalStatus();
-//    delay(500);
-//  }  
+  while (Serial.available() == 0) {
+    displayCalStatus();
+    delay(500);
+  }  
 
   Serial.println("Status: ready to go!!");
 }
@@ -84,27 +86,37 @@ void loop() {
       fwStop();
     } else if (input == "bwStop") {
       bwStop();
+    } else if (input == "goFWD") {
+      goFWD();
+    } else if (input == "goBWD") {
+      goBWD();
+    } else if (input == "moveL") {
+      moveL();  
+    } else if (input == "moveR") {
+      moveR();
     /** XBOX control commands */
     } else if (input == "DU") { // face front
       // figure out when we can get the "front" measurement
       imuReorient();
     } else if (input == "DL") { // turn left
-      setMotors(80,80);
+      setMotorsL();
     } else if (input == "DR") { // turn right
-      setMotors(-70, -70);      
+      setMotorsR();      
     } else if (input == "DD") { // stop (doesn't work)
       stopMotors();
     } else if (input == "A") { // forward
-      setMotors(-80, 80);
+      setMotorsFWD();
     } else if (input == "B") { // backward      
-      setMotors(80, -80);
+      setMotorsBWD();
     } else if (input == "Y") { // stop
       stopMotors();
     } else if (input == "X") { // panic button
       stopMotors();
-      setServoMid(); // set servos to mid position
-      delay(400); // dont run motors until servos done
-      runStopMotors(-80, 80, 1000);
+      setServoMid();     // set servos to mid position
+      delay(servoDelay); // dont run motors until servos done
+      setMotorsBWD();    // go bwd to avoid bumping obstacle
+      delay(1000);
+      stopMotors();      // stop motors
     } else if (input == "LB") { // servos up
       xboxServos("up");
     } else if (input == "RB") { // servos down
@@ -161,20 +173,20 @@ void imuReorient() {
   
     if (delta < -tol && delta > -180) { 
       // LH-x: go CW
-      if (servoPos != 3) {
+      if (servoPos != 2) {
         setServoMid();
-        delay(400);
+        delay(servoDelay);
       }
-      setMotors(-70, -70);
+      setMotorsR();
       while (delta < -tol && delta > -180) {}
       stopMotors();
     } else if (delta > tol && delta < 180) {
       // RH-x: go CCW
-      if (servoPos != 3) {
+      if (servoPos != 2) {
         setServoMid();
-        delay(400);
+        delay(servoDelay);
       }
-      setMotors(80, 80);
+      setMotorsL();
       while (delta > tol && delta < 180) {}
       stopMotors();
     } 
@@ -196,29 +208,11 @@ int checkDelta(int delta) {
 /*
  * MOTOR AND SERVO
  */
-
-/** sets and stops the motors */
-void runStopMotors(int left, int right, int runTime) {
-  brushL.writeMicroseconds(motorValue(left));
-  brushR.writeMicroseconds(motorValue(right));
-  //Serial.println("Status: running motors");
-  delay(runTime);
-  stopMotors();
-}
-
 void setMotors(int left, int right) {
   brushL.writeMicroseconds(motorValue(left));
   brushR.writeMicroseconds(motorValue(right));
   //Serial.println("Status: running motors");
   delay(100);
-}
-
-/** translates value into the actual motor value. Returns '0' speed if invalid input. */
-int motorValue(int value) {
-  if ((value < -300) || (value > 300)) {
-    return 1500;
-  }
-  return value + 1500;
 }
 
 /** stops the motors */
@@ -229,22 +223,29 @@ void stopMotors() {
   delay(100);
 }
 
-/** stop and account for forward drift */
-void fwStop() {
-  stopMotors();
-  setMotors(80, -80);
-  delay(400);
-  stopMotors();
-}
-
-/** stop and account for backward drift */
-void bwStop() {
-  stopMotors();
+void setMotorsFWD() {
   setMotors(-80, 80);
-  delay(400);
-  stopMotors();
 }
 
+void setMotorsBWD() {
+  setMotors(80, -80);
+}
+
+void setMotorsL() {
+  setMotors(80, 80);
+}
+
+void setMotorsR() {
+  setMotors(-80, -80);
+}
+
+/** translates value into the actual motor value. Returns '0' speed if invalid input. */
+int motorValue(int value) {
+  if ((value < -300) || (value > 300)) {
+    return 1500;
+  }
+  return value + 1500;
+}
 
 /** sets servo to new position based on XBOX input */
 void xboxServos(String upDown) {
@@ -268,10 +269,10 @@ void xboxServos(String upDown) {
   } 
 }
 
-void setServoDown() {
-  servoL.writeMicroseconds(pulseDown);
-  servoR.writeMicroseconds(pulseUp);
-  servoPos = 3;
+void setServoUp() {
+  servoL.writeMicroseconds(pulseUp);
+  servoR.writeMicroseconds(pulseDown);
+  servoPos = 1;
 }
 
 void setServoMid() {
@@ -280,35 +281,97 @@ void setServoMid() {
   servoPos = 2;
 }
 
-void setServoUp() {
-  servoL.writeMicroseconds(pulseUp);
-  servoR.writeMicroseconds(pulseDown);
-  servoPos = 1;
+void setServoDown() {
+  servoL.writeMicroseconds(pulseDown);
+  servoR.writeMicroseconds(pulseUp);
+  servoPos = 3;
 }
 
 
 /**
  * IMAGE PROCESSING COMMANDS
  */
- 
+
+/** Servos up, motors fwd for .5 s, motors stop, servos mid */ 
 void goDown() {
-  // set servos to pos 1 (up)
+  stopMotors();
   setServoUp();
-  delay(100);
-  // go forward for .5 seconds
-  runStopMotors(80, -80, 500);
-  // set servos back to initial position
+  delay(servoDelay);
+  setMotorsFWD();
+  delay(500);
+  stopMotors();
   setServoMid();
+  delay(servoDelay);
 }
 
+/** Servos down, motors fwd for .5 s, motors stop, servos mid */ 
 void goUp() {
-  // set servos to pos 5 (down)
+  stopMotors();
   setServoDown();
-  delay(100);
-  // go forward for .5 seconds
-  runStopMotors(80, -80, 500);
-  // set servos back to initial position
+  delay(servoDelay);
+  setMotorsFWD();
+  delay(500);
+  stopMotors();
   setServoMid();
+  delay(servoDelay);
+}
+
+/** stop and account for forward drift */
+void fwStop() {
+  stopMotors();
+  setMotorsBWD();
+  delay(400);
+  stopMotors();
+}
+
+/** stop and account for backward drift */
+void bwStop() {
+  stopMotors();
+  setMotorsFWD();
+  delay(400);
+  stopMotors();
+}
+
+/** set servos to mid, go fwd (without stopping) */
+void goFWD() {
+  stopMotors();
+  setServoMid();
+  delay(servoDelay);
+  setMotorsFWD();
+}
+
+/** set servos to mid, go bwd (without stopping) */
+void goBWD() {
+  stopMotors();
+  setServoMid();
+  delay(servoDelay);
+  setMotorsBWD();
+}
+
+/** shift sub to left */
+void moveL() {
+  stopMotors();
+  imuReorient();
+  setMotorsL();
+  delay(500); // fix 90 deg timing
+  stopMotors();
+  setMotorsFWD();
+  delay(400);
+  stopMotors();
+  imuReorient();
+}
+
+/** shift sub to right */
+void moveR() {
+  stopMotors();
+  imuReorient();
+  setMotorsR();
+  delay(500); // fix 90 deg timing
+  stopMotors();
+  setMotorsFWD();
+  delay(400);
+  stopMotors();
+  imuReorient();
 }
 
 

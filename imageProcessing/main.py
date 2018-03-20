@@ -77,9 +77,13 @@ def main():
     print("AUTONOMOUS MODE")
     while True:
         # Switch to RC mode if xbox is used
-        events = get_gamepad()
-        if isXboxUsed(events) == "None":
-            break
+        try:
+            events = get_gamepad()
+            if isXboxUsed(events) == "DU":
+                print("found xbox, switch over fool")
+                break
+        except:
+            pass
 
         # Grab the current frame
         (grabbed, frame) = camera.read()

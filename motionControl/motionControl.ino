@@ -12,15 +12,11 @@ int servoR_pin = 5;
 
 // constants
 const int pulseUp = 675;
-const int pulseUpMid = 1114;
 const int pulseCenter = 1553;
-const int pulseDownMid = 2036;
 const int pulseDown = 2520;
 
-// global variable for servo position T_T
-// 1: up, 2: up-mid, 3: mid, 4: down-mid, 5: down
-int servoPos = 3;
-int imuPos = 0;
+int imuPos = 0; // global to store IMU "fwd" position
+int servoPos = 2; // global for servo position. 1=up, 2=mid, 3=down
 
 // init servos
 Servo servoL, servoR, brushL, brushR;
@@ -50,7 +46,7 @@ void setup() {
   delay(500);
   
   // center servos
-  setServoPos3();
+  setServoMid();
   delay(500);
   
   Serial.begin(115200);
@@ -88,27 +84,26 @@ void loop() {
     } else if (input == "DU") { // face front
       // figure out when we can get the "front" measurement
       imuReorient();
-    } else if (input == "DL") {
+    } else if (input == "DL") { // turn left
       setMotors(80,80);
-    } else if (input == "DR") {
+    } else if (input == "DR") { // turn right
       setMotors(-70, -70);      
-    } else if (input == "DD") {
+    } else if (input == "DD") { // stop (doesn't work)
       stopMotors();
-    } else if (input == "A") {
+    } else if (input == "A") { // forward
       setMotors(-80, 80);
-    } else if (input == "B") {      
+    } else if (input == "B") { // backward      
       setMotors(80, -80);
-    } else if (input == "Y") {
-      //setServoPos3();
+    } else if (input == "Y") { // stop
       stopMotors();
-    } else if (input == "X") {
+    } else if (input == "X") { // panic button
       stopMotors();
-      setServoPos3(); // set servos to mid position
+      setServoMid(); // set servos to mid position
       delay(400); // dont run motors until servos done
       runStopMotors(-80, 80, 1000);
-    } else if (input == "LB") {
+    } else if (input == "LB") { // servos up
       xboxServos("up");
-    } else if (input == "RB") {
+    } else if (input == "RB") { // servos down
       xboxServos("down");
     } else {
       Serial.println("Error: invalid input");
@@ -163,7 +158,7 @@ void imuReorient() {
     if (delta < -tol && delta > -180) { 
       // LH-x: go CW
       if (servoPos != 3) {
-        setServoPos3();
+        setServoMid();
         delay(400);
       }
       setMotors(-70, -70);
@@ -172,7 +167,7 @@ void imuReorient() {
     } else if (delta > tol && delta < 180) {
       // RH-x: go CCW
       if (servoPos != 3) {
-        setServoPos3();
+        setServoMid();
         delay(400);
       }
       setMotors(80, 80);
@@ -232,58 +227,39 @@ void stopMotors() {
 
 /** sets servo to new position based on XBOX input */
 void xboxServos(String upDown) {
-  if (upDown == "up" && servoPos > 1 && servoPos <= 5) {
-    // go up if current position is 2 to 5
+  if (upDown == "up" && servoPos > 1 && servoPos <= 3) {
+    // go up if current position is 2 to 3
     servoPos--;
-  } else if (upDown == "down" && servoPos < 5 && servoPos >= 1) {
-    // go down if current position is 1 to 4
+  } else if (upDown == "down" && servoPos < 3 && servoPos >= 1) {
+    // go down if current position is 1 to 2
     servoPos++;
   } else {
-    // exit function
+    // exit function. Cannot move up/down further
     return;
   }
 
-  // left servo is 'default' naming convention. Right servo is opposite
   if (servoPos == 1) {
-    setServoPos1();
+    setServoUp();
   } else if (servoPos == 2) {
-    setServoPos2();
+    setServoMid();
   } else if (servoPos == 3) {
-    setServoPos3();
-  } else if (servoPos == 4) {
-    setServoPos4();
-  } else if (servoPos == 5) {
-    setServoPos5();
-  } else {
-    return;
-  }
+    setServoDown();
+  } 
 }
 
-void setServoPos5() {
+void setServoDown() {
   servoL.writeMicroseconds(pulseUp);
   servoR.writeMicroseconds(pulseDown);
-  servoPos = 5;
-}
-
-void setServoPos4() {
-  servoL.writeMicroseconds(pulseUpMid);
-  servoR.writeMicroseconds(pulseDownMid); 
-  servoPos = 4; 
-}
-
-void setServoPos3() {
-  servoL.writeMicroseconds(pulseCenter);
-  servoR.writeMicroseconds(pulseCenter);
   servoPos = 3;
 }
 
-void setServoPos2() {
-  servoL.writeMicroseconds(pulseDownMid);
-  servoR.writeMicroseconds(pulseUpMid);
+void setServoMid() {
+  servoL.writeMicroseconds(pulseCenter);
+  servoR.writeMicroseconds(pulseCenter);
   servoPos = 2;
 }
 
-void setServoPos1() {
+void setServoUp() {
   servoL.writeMicroseconds(pulseDown);
   servoR.writeMicroseconds(pulseUp);
   servoPos = 1;
@@ -296,22 +272,22 @@ void setServoPos1() {
  
 void goDown() {
   // set servos to pos 1 (up)
-  setServoPos1();
+  setServoUp();
   delay(100);
   // go forward for .5 seconds
   runStopMotors(80, -80, 500);
   // set servos back to initial position
-  setServoPos3();
+  setServoMid();
 }
 
 void goUp() {
   // set servos to pos 5 (down)
-  setServoPos5();
+  setServoDown();
   delay(100);
   // go forward for .5 seconds
   runStopMotors(80, -80, 500);
   // set servos back to initial position
-  setServoPos3();
+  setServoMid();
 }
 
 

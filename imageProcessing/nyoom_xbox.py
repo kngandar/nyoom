@@ -4,41 +4,41 @@ def isXboxUsed(events):
         
         if event.code == "BTN_TL":
             if event.state == True:
-                command = "LB_Servo_Up"
+                command = "LB" #Servo_Up 
 
         if event.code == "BTN_TR":
             if event.state == True:
-                command = "RB_Servo_Down"
+                command = "RB" #Servo_Down
 
         if event.code == "BTN_NORTH":
             if event.state == True:
-                command = "X_Panic_Button"
+                command = "X" #Panic_Button
 
         if event.code == "BTN_SOUTH":
             if event.state == True:
-                command = "A_Motor_Forward"
+                command = "A" #Motor_Forward
 
         if event.code == "BTN_EAST":
             if event.state == True:
-                command = "B_Motor_Backward"
+                command = "B" #Motor_Backward
 
         if event.code == "ABS_HAT0Y":
             if event.state == -1:
-                command = "DU_Front"
+                command = "DU" #Front
 
             elif event.state == 1:
-                command = "DD_Motor_Stop"
+                command = "DD" #Motor_Stop
 
         if event.code == "ABS_HAT0X":
             if event.state == -1:
-                command = "DL_Left"
+                command = "DL" #Left 
 
             elif event.state == 1:
-                command = "DR_Right"
+                command = "DR" #Right
 
         if event.code == "BTN_WEST":
             if event.state == True:
-                command = "Y_Servo_Middle"
+                command = "Y" #Servo_Middle
                 
     print(command)
     return command

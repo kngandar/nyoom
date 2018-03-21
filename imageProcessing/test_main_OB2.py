@@ -73,6 +73,7 @@ def detectBalls(frame,hsv,color,numBalls):
 def main():
     # Initialization
     camera = cv2.VideoCapture(0)
+    out = cv2.VideoWriter('output.avi', -1, 20.0, (640,480))
     arduino = serial.Serial('/dev/ttyACM0',115200)
 
     firstYellowFound = False
@@ -109,53 +110,12 @@ def main():
         # Resize the frame, blur it, and convert it to the HSV color space
         frame = imutils.resize(frame, width=600)
         blurred = cv2.GaussianBlur(frame, (11, 11), 0)
-        hsv = cv2.cvtColor(blurred, cv2.COLOR_BGR2HSV)
-
-        # -------------------------------------
-        # OBSTACLE 1: Go below hanging obstacle
-        # -------------------------------------
-        if (OB_1 == False):
-            color = yellow
-            [frame,ballFound] = detectBalls(frame,hsv,color,numBalls)
-            
-            # Check if 2 balls detected
-            if len(ballFound) == numBalls:
-                if not firstYellowFound:
-                    firstYellowFound = True
-                    
-                # Whether this is first time or not, always check for height range
-                if not nyoom_check.isDeepEnough(ballFound):
-                    print("Not deep enough")                        
-                    arduino.write("goDown")
-                    state1 = STOPPED
-                else:
-                    # If nyoom is not moving and is deep enough, go forward
-                    if state1 == STOPPED:
-                        arduino.write("goFWD")
-                        state1 = MOVING
-                    # Else do nothing since nyoom is currently moving
-                
-            else:
-                # No ball detected but yellow balls were already detected
-                # Finished obstacle 1
-                if firstYellowFound:
-                    print("Obstacle 1 complete")
-                    OB_1 = True
-                    sleep(PASS)
-                    arduino.write("fwStop")
-                # No ball detected and no yellow balls have been detected at all
-                # Nyoom is not close enough to obstacle to start responding (init)
-                else:
-                    print("Nyoom still can't see hanging wall")
-                    arduino.write("goFWD")
-                    sleep(1.5)    # seconds
-                    arduino.write("fwStop")
-                    
+        hsv = cv2.cvtColor(blurred, cv2.COLOR_BGR2HSV) 
 
         # --------------------------
         # OBSTACLE 2: Go above table
         # --------------------------
-        elif (OB_2 == False):
+        if (OB_2 == False):
             color = red
             [frame,ballFound] = detectBalls(frame,hsv,color,numBalls)
             
@@ -205,56 +165,7 @@ def main():
                     arduino.write("goFWD")
                     sleep(1.5)      # seconds
                     arduino.write("fwStop")
-                        
-        
-        # -----------------------------------
-        # OBSTACLE 3: Go through hole opening
-        # -----------------------------------
-        elif (OB_3 == False):
-            numBalls = 4
-            color = green
-            [frame,ballFound] = detectBalls(frame,hsv,color,numBalls)
-            
-            # Check if 4 balls are detected
-            if len(ballFound) == numBalls:
-                if not firstGreenFound:
-                    firstGreenFound = True
-                
-                # Aligns nyoom to middle of opening if not centered
-                if not center3:
-                    dir = nyoom_check.checkOpening(ballFound)
-                    if dir == GO_LEFT:
-                        print("Not centered: need to move left")
-                        arduino.write("moveL")
-                    elif dir == GO_RIGHT:
-                        print("Not centered: need to move right")
-                        arduino.write("moveR")
-                    else:
-                        print("Centered")
-                        center3 = True
-                
-                # Go through to opening ONLY once nyoom is centered
-                else:
-                    if state3 == STOPPED:
-                        arduino.write("goFWD")
-                        state3 = MOVING
-                    # Else do nothing since nyoom is currently moving                
-                 
-            else:
-                # No ball detected but green balls were already detected
-                # Finished obstacle 3
-                if firstGreenFound:
-                    print("Obstacle 3 complete")
-                    OB_3 = True
-                    arduino.write("fwStop")
-                # No ball detected and no green balls have been detected at all
-                # Nyoom is not close enough to obstacle to start responding (init)
-                else:
-                    print("Nyoom can't see opening")
-                    arduino.write("goFWD")
-                    sleep(1.5)      # seconds
-                    arduino.write("fwStop")
-                    
+                                          
         # ----------------------------
         # Completed all 3 obstacles
         # Switch to RC immediately
@@ -263,6 +174,8 @@ def main():
             RC = True
             break       
                 
+        # Write the frame
+        out.write(frame)
         # Show the frame to our screen
         cv2.imshow("Frame", frame)
         key = cv2.waitKey(1) & 0xFF
@@ -292,6 +205,8 @@ def main():
             numBalls = 2
             (frame,ballFound) = detectBalls(frame,hsv,color,numBalls)
 
+            # Write the frame
+            out.write(frame)
             # Show the frame to our screen
             cv2.imshow("Frame", frame)
             key = cv2.waitKey(1) & 0xFF
@@ -312,6 +227,7 @@ def main():
 
     # Cleanup the camera and close any open windows
     camera.release()
+    out.release()
     cv2.destroyAllWindows()
 
 if __name__ == "__main__":

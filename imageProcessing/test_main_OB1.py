@@ -73,6 +73,7 @@ def detectBalls(frame,hsv,color,numBalls):
 def main():
     # Initialization
     camera = cv2.VideoCapture(0)
+    out = cv2.VideoWriter('output.avi', -1, 20.0, (640,480))
     arduino = serial.Serial('/dev/ttyACM0',115200)
 
     firstYellowFound = False
@@ -151,110 +152,6 @@ def main():
                     sleep(1.5)    # seconds
                     arduino.write("fwStop")
                     
-
-        # --------------------------
-        # OBSTACLE 2: Go above table
-        # --------------------------
-        elif (OB_2 == False):
-            color = red
-            [frame,ballFound] = detectBalls(frame,hsv,color,numBalls)
-            
-            # Check if 2 balls detected
-            if len(ballFound) == numBalls:
-                if not firstRedFound:
-                    firstRedFound = True
-                  
-                # Aligns nyoom to middle of table ish if not centered
-                if not center2:
-                    dir = nyoom_check.checkCentered(ballFound)
-                    if dir == GO_LEFT:
-                        print("Not centered: need to move left")
-                        arduino.write("moveL")
-                    elif dir == GO_RIGHT:
-                        print("Not centered: need to move right")
-                        arduino.write("moveR")
-                    else:
-                        print("Centered")
-                        center2 = True
-                
-                # Check height ONLY once nyoom is centered
-                else:
-                    # Whether this is first time or not, always check for height range
-                    if not nyoom_check.isAboveTable(ballFound):
-                        print("Not high enough")
-                        arduino.write("goUp")
-                        state2 = STOPPED
-                    else: 
-                        # If nyoom is not moving and is above table, go forward
-                        if state2 == STOPPED:
-                            arduino.write("goFWD")
-                            state2 = MOVING
-                        # Else do nothing since nyoom is currently moving
-            
-            else:
-                # No ball detected but red balls were already detected
-                # Finished obstacle 2
-                if firstRedFound:
-                    print("Obstacle 2 complete")
-                    OB_2 = True
-                    arduino.write("fwStop")
-                # No ball detected and no red balls have been detected at all
-                # Nyoom is not close enough to obstacle to start responding (init)
-                else:
-                    print("Nyoom still can't see table")
-                    arduino.write("goFWD")
-                    sleep(1.5)      # seconds
-                    arduino.write("fwStop")
-                        
-        
-        # -----------------------------------
-        # OBSTACLE 3: Go through hole opening
-        # -----------------------------------
-        elif (OB_3 == False):
-            numBalls = 4
-            color = green
-            [frame,ballFound] = detectBalls(frame,hsv,color,numBalls)
-            
-            # Check if 4 balls are detected
-            if len(ballFound) == numBalls:
-                if not firstGreenFound:
-                    firstGreenFound = True
-                
-                # Aligns nyoom to middle of opening if not centered
-                if not center3:
-                    dir = nyoom_check.checkOpening(ballFound)
-                    if dir == GO_LEFT:
-                        print("Not centered: need to move left")
-                        arduino.write("moveL")
-                    elif dir == GO_RIGHT:
-                        print("Not centered: need to move right")
-                        arduino.write("moveR")
-                    else:
-                        print("Centered")
-                        center3 = True
-                
-                # Go through to opening ONLY once nyoom is centered
-                else:
-                    if state3 == STOPPED:
-                        arduino.write("goFWD")
-                        state3 = MOVING
-                    # Else do nothing since nyoom is currently moving                
-                 
-            else:
-                # No ball detected but green balls were already detected
-                # Finished obstacle 3
-                if firstGreenFound:
-                    print("Obstacle 3 complete")
-                    OB_3 = True
-                    arduino.write("fwStop")
-                # No ball detected and no green balls have been detected at all
-                # Nyoom is not close enough to obstacle to start responding (init)
-                else:
-                    print("Nyoom can't see opening")
-                    arduino.write("goFWD")
-                    sleep(1.5)      # seconds
-                    arduino.write("fwStop")
-                    
         # ----------------------------
         # Completed all 3 obstacles
         # Switch to RC immediately
@@ -263,6 +160,8 @@ def main():
             RC = True
             break       
                 
+        # Write the frame
+        out.write(frame)
         # Show the frame to our screen
         cv2.imshow("Frame", frame)
         key = cv2.waitKey(1) & 0xFF
@@ -292,6 +191,8 @@ def main():
             numBalls = 2
             (frame,ballFound) = detectBalls(frame,hsv,color,numBalls)
 
+            # Write the frame
+            out.write(frame)
             # Show the frame to our screen
             cv2.imshow("Frame", frame)
             key = cv2.waitKey(1) & 0xFF
@@ -312,6 +213,7 @@ def main():
 
     # Cleanup the camera and close any open windows
     camera.release()
+    out.release()
     cv2.destroyAllWindows()
 
 if __name__ == "__main__":

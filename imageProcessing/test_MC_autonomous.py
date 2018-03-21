@@ -58,7 +58,8 @@ def detectBalls(frame,hsv,color,numBalls):
 def main():
     # Initialization
     camera = cv2.VideoCapture(0)
-    arduino = serial.Serial('/dev/tty/ACMO',115200)
+    out = cv2.VideoWriter('output.avi', -1, 20.0, (640,480))
+    arduino = serial.Serial('/dev/ttyACM0',115200)
     color = yellow
     
     RC = False
@@ -115,9 +116,19 @@ def main():
         elif key == ord("a"):
             print 'Move left slightly'
             arduino.write("moveL")
+            while True:
+                response = arduino.readline()
+                if response == "imDone":
+                    print 'Nyoom moved left'
+                    break                    
         elif key == ord("d"):
             print 'Move right slightly'
             arduino.write("moveR")
+            while True:
+                response = arduino.readline()
+                if response == "imDone":
+                    print 'Nyoom moved right'
+                    break
             
         elif key == ord("i"):
             print 'Go up slightly'
@@ -133,13 +144,19 @@ def main():
             arduino.write("goDown")
             
         elif key == ord("g"):
-            print 'Take IMU value'
+            print 'Reorient'
             arduino.write("DU")
+            while True:
+                response = arduino.readline()
+                if response == "IMUdone":
+                    print 'Nyoom is reoriented'
+                    break
             
     # Switched to RC mode
     if RC:
         print("REMOTE CONTROL MODE")
         color = yellow
+             
         while True:
             events = get_gamepad()
             command = isXboxUsed(events)
@@ -155,10 +172,12 @@ def main():
             numBalls = 2
             (frame,ballFound) = detectBalls(frame,hsv,color,numBalls)
 
+            # Write the frame
+            out.write(frame)
             # Show the frame to our screen
-            cv2.imshow("Frame", frame)
+            cv2.imshow("Frame", frame)          
+            
             key = cv2.waitKey(1) & 0xFF
-
             # If the 'q' key is pressed, stop the loop
             if key == ord("q"):
                 print("Quit RC")
@@ -175,6 +194,7 @@ def main():
     
     # Cleanup the camera and close any open windows
     camera.release()
+    out.release()
     cv2.destroyAllWindows()
 
 if __name__ == "__main__":

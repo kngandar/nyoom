@@ -18,6 +18,7 @@ const int pulseDown = 2520;
 const int servoDelay = 400;
 
 int imuPos = 0; // global to store IMU "fwd" position
+String imuStatus = "FWD";
 int servoPos = 2; // global for servo position. 1=up, 2=mid, 3=down
 
 // init servos
@@ -77,6 +78,9 @@ void loop() {
     
     if (input == "stop") {
       stopMotors();
+    } else if (input == "1") {
+      doCourse();
+      Serial.println("done");
     /** Image processing commands */
     } else if (input == "goDown") {
       goDown();
@@ -127,9 +131,86 @@ void loop() {
   }
 }
 
+
+/*
+ * FAKE AUTONOMOUS
+ */
+void doCourse() {
+  // get "forward" IMU reading
+  imuCheck();
+
+  // obstacle 1: go forward
+  setMotorsFWD();
+  waitAndCheck(8);
+  stopMotors();
+  
+  // obstacle 2
+  setServoDown();
+  delay(servoDelay);
+  setMotorsFWD();
+  delay(3000);
+  stopMotors();
+  setServoMid();
+  delay(servoDelay);
+
+  // obstacle 3
+  setMotorsFWD();
+  waitAndCheck(10);
+  stopMotors();
+}
+
+/** Input n seconds you want to delay and IMU correct for */
+void waitAndCheck(int n) {
+  for (int i = 0; i < n; i++) {
+    delay(1000);
+    imuCheck();
+  }
+}
+
+
 /*
  * IMU SENSOR
  */
+
+/** slightly increases speed of L or R motor to correct IMU heading */
+void imuCheck() {
+  if (imuPos == 0) {
+    sensors_event_t pos;
+    bno.getEvent(&pos);
+    imuPos = pos.orientation.x;
+  } else {
+    sensors_event_t curr;
+    int tol = 5;
+    int delta = 0;
+
+    bno.getEvent(&curr);
+    delta = checkDelta(curr.orientation.x - imuPos);
+    
+    Serial.print("imuPos = ");
+    Serial.println(imuPos); 
+    Serial.print("Current = ");
+    Serial.println(curr.orientation.x);
+
+    if (delta < -tol && delta > -180) { 
+      // LH-x: correct right (Default L is -100)
+      if (imuStatus != "R") {
+        brushL.writeMicroseconds(motorValue(-130));
+        imuStatus = "R";
+      }      
+    } else if (delta > tol && delta < 180) {
+      // RH-x: correct left (default R is 80)
+      if (imuStatus != "L") {
+        brushR.writeMicroseconds(motorValue(110));
+        imuStatus = "L";
+      }
+    }  else {
+      if (imuStatus != "FWD") {
+        setMotorsFWD();
+        imuStatus = "FWD";
+      }
+    }
+  }
+}
 
 /** Display sensor calibration status */
 void displayCalStatus(void) {

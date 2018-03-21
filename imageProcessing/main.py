@@ -33,6 +33,7 @@ GO_RIGHT = 21
 
 ### VARIABLES ###
 MIN_RAD = 15
+PASS = 3 # second
 
 
 ### FUNCTIONS ###
@@ -140,6 +141,7 @@ def main():
                 if firstYellowFound:
                     print("Obstacle 1 complete")
                     OB_1 = True
+                    sleep(PASS)
                     arduino.write("fwStop")
                 # No ball detected and no yellow balls have been detected at all
                 # Nyoom is not close enough to obstacle to start responding (init)

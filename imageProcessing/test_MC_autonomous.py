@@ -65,7 +65,9 @@ def main():
     RC = False
     # Script on standby until user press "Enter"
     raw_input("Press Enter to start")
+    arduino.write("do thing")
     arduino.write("DU")
+    
         
     while True:
         # Switch to RC mode if xbox is used

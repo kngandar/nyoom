@@ -89,6 +89,8 @@ def main():
 
     # Script on standby until user press "Enter"
     raw_input("Press Enter to start")
+    arduino.write("do thing")
+    arduino.write("DU")
 
     # In autonomous mode
     print("AUTONOMOUS MODE")

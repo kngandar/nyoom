@@ -67,7 +67,7 @@ void setup() {
     delay(500);
   }  
 
-  Serial.println("Status: ready to go!!");
+  Serial.println("go");
 }
 
 

@@ -167,29 +167,33 @@ void imuReorient() {
     sensors_event_t curr;
     int tol = 15;
     int delta = 0;
-    
+
     bno.getEvent(&curr);
     delta = checkDelta(curr.orientation.x - imuPos);
-  
-    if (delta < -tol && delta > -180) { 
-      // LH-x: go CW
-      if (servoPos != 2) {
-        setServoMid();
-        delay(servoDelay);
-      }
-      setMotorsR();
-      while (delta < -tol && delta > -180) {}
-      stopMotors();
-    } else if (delta > tol && delta < 180) {
-      // RH-x: go CCW
-      if (servoPos != 2) {
-        setServoMid();
-        delay(servoDelay);
-      }
-      setMotorsL();
-      while (delta > tol && delta < 180) {}
-      stopMotors();
-    } 
+
+    if (servoPos != 2) {
+      setServoMid();
+      delay(servoDelay);
+    }
+    
+    while (tol < abs(delta)) {
+      bno.getEvent(&curr);
+      delta = checkDelta(curr.orientation.x - imuPos);
+
+      if (delta < -tol && delta > -180) { 
+        setMotorsR();
+        delay(800);
+        stopMotors();
+        delay(200);
+      } else if (delta > tol && delta < 180) {
+        // RH-x: go CCW
+        setMotorsL();
+        delay(800);
+        stopMotors();
+        delay(200);
+      } 
+    }
+    Serial.println("IMUdone");
   }
 }
 
@@ -220,7 +224,7 @@ void stopMotors() {
   brushL.writeMicroseconds(motorValue(0));
   brushR.writeMicroseconds(motorValue(0));
   //Serial.println("Status: motors stopped");
-  delay(100);
+  delay(500);
 }
 
 void setMotorsFWD() {
@@ -228,7 +232,7 @@ void setMotorsFWD() {
 }
 
 void setMotorsBWD() {
-  setMotors(80, -80);
+  setMotors(65, -80);
 }
 
 void setMotorsL() {
@@ -298,7 +302,7 @@ void goDown() {
   setServoUp();
   delay(servoDelay);
   setMotorsFWD();
-  delay(500);
+  delay(1000);
   stopMotors();
   setServoMid();
   delay(servoDelay);
@@ -310,7 +314,7 @@ void goUp() {
   setServoDown();
   delay(servoDelay);
   setMotorsFWD();
-  delay(500);
+  delay(1000);
   stopMotors();
   setServoMid();
   delay(servoDelay);
@@ -320,7 +324,7 @@ void goUp() {
 void fwStop() {
   stopMotors();
   setMotorsBWD();
-  delay(400);
+  delay(500);
   stopMotors();
 }
 
@@ -328,7 +332,7 @@ void fwStop() {
 void bwStop() {
   stopMotors();
   setMotorsFWD();
-  delay(400);
+  delay(500);
   stopMotors();
 }
 
@@ -338,6 +342,7 @@ void goFWD() {
   setServoMid();
   delay(servoDelay);
   setMotorsFWD();
+  delay(500); // prevent any shenanigans
 }
 
 /** set servos to mid, go bwd (without stopping) */
@@ -346,6 +351,7 @@ void goBWD() {
   setServoMid();
   delay(servoDelay);
   setMotorsBWD();
+  delay(500); // prevent any shenanigans
 }
 
 /** shift sub to left */
@@ -356,9 +362,10 @@ void moveL() {
   delay(500); // fix 90 deg timing
   stopMotors();
   setMotorsFWD();
-  delay(400);
+  delay(500);
   stopMotors();
   imuReorient();
+  Serial.println("imDone");
 }
 
 /** shift sub to right */
@@ -369,9 +376,10 @@ void moveR() {
   delay(500); // fix 90 deg timing
   stopMotors();
   setMotorsFWD();
-  delay(400);
+  delay(500);
   stopMotors();
   imuReorient();
+  Serial.println("imDone");
 }
 
 

@@ -102,7 +102,7 @@ void loop() {
       setMotorsL();
     } else if (input == "DR") { // turn right
       setMotorsR();      
-    } else if (input == "DD") { // stop (doesn't work)
+    } else if (input == "DD") { // stop (doesn't work)im
       stopMotors();
     } else if (input == "A") { // forward
       setMotorsFWD();
@@ -154,7 +154,7 @@ void displayCalStatus(void) {
   Serial.print(" A:");
   Serial.print(accel, DEC);
   Serial.print(" M:");
-  Serial.print(mag, DEC);
+  Serial.println(mag, DEC);
 }
  
 /** 1st time: gets a reading for imuPos. After: reorient to initial value */
@@ -176,9 +176,14 @@ void imuReorient() {
       delay(servoDelay);
     }
     
+    Serial.print("imuPos =");
+    Serial.println(imuPos);
     while (tol < abs(delta)) {
       bno.getEvent(&curr);
       delta = checkDelta(curr.orientation.x - imuPos);
+      
+      Serial.print("Current =");
+      Serial.println(curr.orientation.x);
 
       if (delta < -tol && delta > -180) { 
         setMotorsR();
@@ -228,7 +233,7 @@ void stopMotors() {
 }
 
 void setMotorsFWD() {
-  setMotors(-80, 80);
+  setMotors(-100, 80);
 }
 
 void setMotorsBWD() {
@@ -237,10 +242,14 @@ void setMotorsBWD() {
 
 void setMotorsL() {
   setMotors(80, 80);
+  delay(500);
+  stopMotors();
 }
 
 void setMotorsR() {
   setMotors(-80, -80);
+  delay(500);
+  stopMotors();
 }
 
 /** translates value into the actual motor value. Returns '0' speed if invalid input. */

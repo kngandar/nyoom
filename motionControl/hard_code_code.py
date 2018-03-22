@@ -3,11 +3,18 @@
 # Load library functions we want
 
 import serial
+from time import sleep
 from inputs import get_gamepad
 
 ser = serial.Serial('/dev/ttyACM0',115200)
 
+raw_input("Press Enter to continue")
+ser.write("1")
+print('Arduino is doing thing')
+sleep(25)
+
 try:
+    print('Entering RC mode...')
     print('Press CTRL+C to quit')
 
     # Loop indefinitely

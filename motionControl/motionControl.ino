@@ -14,6 +14,9 @@ int servoR_pin = 5;
 const int pulseUp = 675;
 const int pulseCenter = 1553;
 const int pulseDown = 2520;
+// for RC in case of sinking
+const int pulseDownMid = 2036;
+const int pulseUpMid = 1114;
 
 const int servoDelay = 400;
 
@@ -101,13 +104,14 @@ void loop() {
     /** XBOX control commands */
     } else if (input == "DU") { // face front
       // figure out when we can get the "front" measurement
-      imuReorient();
+      //imuReorient();
+      setServoDownMid();
     } else if (input == "DL") { // turn left
       setMotorsL();
     } else if (input == "DR") { // turn right
       setMotorsR();      
     } else if (input == "DD") { // stop (doesn't work)im
-      stopMotors();
+      setServoMid();
     } else if (input == "A") { // forward
       setMotorsFWD();
     } else if (input == "B") { // backward      
@@ -137,11 +141,12 @@ void loop() {
  */
 void doCourse() {
   // get "forward" IMU reading
+  imuPos = 0;
   imuCheck();
 
   // obstacle 1: go forward
   setMotorsFWD();
-  waitAndCheck(8);
+  waitAndCheck(6);
   stopMotors();
   
   // obstacle 2
@@ -155,7 +160,7 @@ void doCourse() {
 
   // obstacle 3
   setMotorsFWD();
-  waitAndCheck(10);
+  waitAndCheck(12);
   stopMotors();
 }
 
@@ -246,7 +251,7 @@ void imuReorient() {
     imuPos = pos.orientation.x;
   } else {
     sensors_event_t curr;
-    int tol = 15;
+    int tol = 10;
     int delta = 0;
 
     bno.getEvent(&curr);
@@ -360,7 +365,10 @@ void xboxServos(String upDown) {
     setServoMid();
   } else if (servoPos == 3) {
     setServoDown();
-  } 
+  } else if (servoPos == 4) {
+    // prevent shenanigans due to xbox down-mid command
+    setServoMid();
+  }
 }
 
 void setServoUp() {
@@ -379,6 +387,13 @@ void setServoDown() {
   servoL.writeMicroseconds(pulseDown);
   servoR.writeMicroseconds(pulseUp);
   servoPos = 3;
+}
+
+void setServoDownMid() {
+  servoL.writeMicroseconds(pulseDownMid);
+  servoR.writeMicroseconds(pulseUpMid);
+  // "invalid" position
+  servoPos = 4;
 }
 
 
